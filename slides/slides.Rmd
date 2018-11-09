@@ -1,0 +1,19 @@
+---
+title: "draft slides"
+author: "Andreas Beger, Predictive Heuristics"
+date: "`r format(Sys.Date(), '%e %b %Y')`"
+output: xaringan::moon_reader
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+<!-- https://apreshill.github.io/data-vis-labs-2018/slides/06-slides_xaringan.html#13 -->
+
+# First slide
+
+
+---
+
+# Second slides
