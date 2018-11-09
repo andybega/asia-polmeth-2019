@@ -2,6 +2,18 @@ library("tidyverse")
 
 dropbox_path <- "~/Dropbox/Work/asia-polmeth-2019"
 
+
+
+
+user_clean %>%
+  group_by(condition) %>%
+  summarize(total_users = length(unique(user_id)),
+            turkers     = length(unique(user_id[turker])),
+            volunteers  = total_users - turkers,
+            forecasts = n())
+
+
+
 mbrier <- function(f, o, ordered = TRUE) {
   prediction = f
   outcome = o
