@@ -4,6 +4,7 @@
 
 library("tidyverse")
 library("futile.logger")
+library("future.apply")
 
 dropbox_path  <- "~/Dropbox/Work/asia-polmeth-2019"
 in_dir  <- file.path(dropbox_path, "input-data")
@@ -74,7 +75,9 @@ no_q  <- filter(q_dump, !is.na(ifp_id) & is.na(question_id))
 no_id <- filter(q_dump, is.na(ifp_id))
 
 q_dump <- q_dump %>%
-  filter(!is.na(ifp_id))
+  filter(!is.na(ifp_id)) %>%
+  # filter practice questions
+  filter(!str_detect(title, "Practice Q"))
 
 # Questions that require data aggregation
 agg_q <- q_dump %>%
@@ -95,7 +98,7 @@ answers <- q_dump %>%
   select(ifp_id, has_historic_data, has_arima, correct_option)
   
 
-
+# The warnings are related to missing option_2, option_3, etc.
 user_raw <-  file.path(dropbox_path, "input-data", user_dump) %>%
   read_csv(.)
 
