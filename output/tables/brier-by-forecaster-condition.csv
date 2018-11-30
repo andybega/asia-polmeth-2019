@@ -1,0 +1,7 @@
+Forecaster,Condition,avg_Brier
+Machine,Machine,0.38592757880432893
+Turker,A: no chart,0.43627708817291183
+Turker,C: chart and model,0.43185210335510793
+Volunteer,A: no chart,0.29717813798836246
+Volunteer,B: chart only,0.25013799414348464
+Volunteer,C: chart and model,0.3717190137007629

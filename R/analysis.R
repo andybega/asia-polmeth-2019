@@ -7,6 +7,7 @@ library("betareg")
 library("rstan")
 library("rstanarm")
 library("forcats")
+library("broom")
 
 dropbox_path <- "~/Dropbox/Work/asia-polmeth-2019"
 in_dir  <- file.path(dropbox_path, "input-data")
@@ -41,10 +42,17 @@ all_fcasts <- bind_rows(df1, df2) %>%
   left_join(data_sources %>% select(ifp_id, data_source), by = "ifp_id") %>%
   replace_na(list(data_source = "other")) %>%
   # add in summary info for chart/arima status
-  mutate(Data_status = case_when(
+  mutate(IFP_Group = case_when(
     has_historic_data & has_arima ~ "Chart and model",
     has_historic_data & !has_arima ~ "Chart only",
-    !has_historic_data ~ "None",
+    !has_historic_data ~ "No TS data",
+    TRUE ~ NA_character_
+  ), IFP_Group = factor(IFP_Group, levels = c("No TS data", "Chart only", "Chart and model"))) %>%
+  mutate(Condition = case_when(
+    condition=="a" ~ "A: no chart",
+    condition=="b" ~ "B: chart only",
+    condition=="c" ~ "C: chart and model",
+    condition=="n/a" ~ "Machine",
     TRUE ~ NA_character_
   ))
 
@@ -63,58 +71,172 @@ common_period %>%
 
 by_ifp <- common_period %>%
   group_by(ifp_id) %>%
-  summarize_at(vars(one_of("has_arima", "has_historic_data", "Data_status")), unique) %>%
+  summarize_at(vars(one_of("has_arima", "has_historic_data", "IFP_Group")), unique) %>%
   group_by(has_arima, has_historic_data) %>%
-  summarize(Data_status = unique(Data_status), n = n()) 
+  summarize(IFP_Group = unique(IFP_Group), n = n()) 
+write_csv(by_ifp, "output/tables/n-ifps-by-data-status.csv")
 sum(by_ifp$n)
 by_ifp
 
 # Overall condition table
-cond_tbl <- common_period %>%
+brier_by_forecaster <- common_period %>%
   group_by(Forecaster) %>%
-  summarize(avg_Brier = mean(brier))
-cond_tbl
+  summarize(avg_Brier = mean(brier), n = n()) %>%
+  write_csv(., "output/tables/brier-by-forecaster.csv")
+brier_by_forecaster %>%
+  knitr::kable(digits = 3)
+
+brier_by_forecaster_condition <- common_period %>%
+  group_by(Forecaster, Condition) %>%
+  summarize(avg_Brier = mean(brier)) %>%
+  write_csv("output/tables/brier-by-forecaster-condition.csv")
+brier_by_forecaster_condition %>%
+  spread(Condition, avg_Brier) %>%
+  knitr::kable(digits = 3)
+
+
+brier_by_forecaster_ifp_group_condition <- common_period %>%
+  group_by(Forecaster, IFP_Group, Condition) %>%
+  summarize(avg_Brier = mean(brier), 
+            sd_Brier = sd(brier), 
+            n = n()) %>%
+  ungroup() %>%
+  arrange(Condition, Forecaster, IFP_Group) %>%
+  mutate(Group = 1:n()) %>%
+  select(Group, Condition, Forecaster, IFP_Group, everything()) %>%
+  write_csv("output/tables/brier-by-forecast-ifp-group-condition.csv")
+brier_by_forecaster_ifp_group_condition %>%
+  knitr::kable(digits = 2)
+
+# Design table
+brier_by_forecaster_ifp_group_condition %>%
+  select(Condition, Forecaster, IFP_Group) %>%
+  arrange(Condition, Forecaster, IFP_Group) %>%
+  mutate(
+    `Sees chart?` = case_when(
+      str_detect(Condition, "(B:)|(C:)") & IFP_Group %in% c("Chart only", "Chart and model")  ~ "X",
+      TRUE ~ ""
+    ),
+    `Sees model?` = case_when(
+      str_detect(Condition, "C:") & IFP_Group=="Chart and model" ~ "X",
+      TRUE ~ ""
+    )) %>%
+  dplyr::mutate(Group = 1:n()) %>%
+  select(Group, everything()) %>%
+  knitr::kable()
+
+brier_by_ifp_group <- common_period %>%
+  group_by(IFP_Group) %>%
+  summarize(avg_Brier = mean(brier), n_ifps = length(unique(ifp_id)), n_fcasts = n())
+brier_by_ifp_group
+
+
+# Turker pairwise comparison ----------------------------------------------
+
+turker_pairs <- common_period %>% 
+  filter(condition!="b") %>%
+  mutate(Condition = fct_recode(Condition, `C: chart and model` = "Machine")) %>%
+  mutate(Forecaster = factor(Forecaster, levels = c("Turker", "Volunteer", "Machine"))) %>%
+  unite(Group, Condition, IFP_Group)
+group_all <- turker_pairs %>%
+  mutate(Group = "All") 
+turker_pairs <- bind_rows(turker_pairs, group_all) %>%
+  group_by(Group) %>%
+  nest(Forecaster, brier) %>%
+  # now add linear models
+  mutate(lm = map(data, function(x) lm(brier ~ Forecaster, data = x)),
+         coefs = map(lm, tidy),
+         rsq = map_dbl(lm, function(x) glance(x)$adj.r.squared))
+
+turker_pairs %>%
+  select(Group, coefs) %>%
+  unnest(coefs) %>%
+  mutate(term = factor(term) %>% fct_recode(`Baseline: Turker` = "(Intercept)")) %>%
+  ggplot(., aes(x = Group, colour = term)) +
+  geom_pointrange(aes(y = estimate, ymin = estimate - 1.96*std.error, ymax = estimate + 1.96*std.error)) +
+  coord_flip() +
+  scale_y_reverse() +
+  geom_hline(yintercept = 0, linetype = 3) +
+  theme_minimal() +
+  labs(y = "Average Brier / change in Average Brier") +
+  theme(legend.position = "top")
+ggsave("output/figures/pairwise-comparisons-turker.png", height = 4, width = 7)
+
+
+
+# Linear models for chart/model effects -----------------------------------
+
+summary(lm(brier ~ Forecaster + IFP_Group + sees_chart + sees_model, data = common_period[common_period$Forecaster!="Machine", ]))
+
+summary(lmer(brier ~ Forecaster + IFP_Group + sees_chart + sees_model + (1|ifp_id), common_period[common_period$Forecaster!="Machine", ]))
 
 
 
 
+# Where did models do well? Look by data source ---------------------------
+
+
+# Based on this, split out ACLED binary questions
+View(common_period %>%
+       filter(IFP_Group=="Chart and model") %>%
+       group_by(data_source, num_options, Forecaster) %>%
+       summarize(n_ifps = length(unique(ifp_id)),
+                 n_fcasts = n(),
+                 avg_Brier = mean(brier), 
+                 sd_Brier = sd(brier)))
+
+arima_qs <- common_period %>%
+  filter(IFP_Group=="Chart and model") %>%
+  mutate(Data_source = case_when(
+    data_source=="acled" & num_options==2 ~ "ACLED 2op",
+    data_source=="acled" & num_options==5 ~ "ACLED 5op",
+    TRUE ~ data_source
+  ))
+
+
+arima_qs %>%
+  group_by(num_options, Forecaster) %>%
+  summarize(n_ifps = length(unique(ifp_id)),
+            n_fcasts = n(),
+            avg_Brier = mean(brier), 
+            sd_Brier = sd(brier)) 
+
+arima_qs %>%
+  group_by(Data_source, num_options) %>%
+  summarize(n_ifps = length(unique(ifp_id)),
+            avg_Brier = mean(brier))
+
+brier_arima_qs_only_by_data_source_forecaster <- arima_qs %>%
+  group_by(Data_source, Forecaster) %>%
+  summarize(n_ifps = length(unique(ifp_id)),
+            n_fcasts = n(),
+            avg_Brier = mean(brier), 
+            sd_Brier = sd(brier)) %>%
+  write_csv("output/tables/brier-arima-qs-only-by-data-source-forecaster.csv")
+brier_arima_qs_only_by_data_source_forecaster %>%
+  group_by(Data_source) %>%
+  mutate(N_IFPs = max(n_ifps)) %>%
+  ungroup() %>%
+  select(Data_source, N_IFPs, Forecaster, avg_Brier) %>%
+  spread(Forecaster, avg_Brier) %>%
+  write_csv("output/tables/brier-arima-qs-only-by-data-source-forecaster-wide.csv") %>%
+  knitr::kable(digits = 3)
+
+summary(lm(brier ~ -1 + data_source*Forecaster, data = arima_qs ))
+
+
+summary(lm(brier ~ -1 + data_source*Forecaster*(num_options==2), data = arima_qs ))
 
 
 
+# Condition B deep dive ---------------------------------------------------
+
+# B did better on non-data questions
 
 
 
+# B did better even on questions where we know the data were wrong
 
-
-
-
-
-# Compare human and machine forecasts -------------------------------------
-
-ggplot(all_fcasts, aes(x = date, y = brier)) +
-  geom_point(alpha = .1) +
-  geom_smooth(aes(color = Forecaster), se = FALSE)
-
-ggplot(all_fcasts, aes(x = date, y = brier)) +
-  geom_point(alpha = .1) +
-  geom_smooth(aes(color = condition), se = FALSE)
-
-ggplot(all_fcasts, aes(x = date, y = brier)) +
-  geom_point(alpha = .1) +
-  geom_smooth(aes(color = interaction(condition, Forecaster)), se = FALSE)
-
-
-
-common_period %>%
-  group_by(Forecaster, condition) %>%
-  summarize(avg_Brier = mean(brier), n = n())
-
-table(common_period$Forecaster, common_period$condition)
-
-common_period %>%
-  filter(sub_condition_1 %in% c("team", "machine")) %>%
-  group_by(Forecaster, condition) %>%
-  summarize(avg_Brier = mean(brier), n = n())
 
 # 1892 Oil production in Iraq in June 2018
 # This is the question we used at the site visit to illustrate bad data. 
@@ -248,6 +370,24 @@ foo %>%
 # Look at it by how well the model did; when the model did well, did C do well, too?
 # Look at it when you take out the heavy users. Why would or would not short-term
 # users be impacted by platform design choices?
+
+
+# Compare human and machine forecasts -------------------------------------
+
+ggplot(all_fcasts, aes(x = date, y = brier)) +
+  geom_point(alpha = .1) +
+  geom_smooth(aes(color = Forecaster), se = FALSE)
+
+ggplot(all_fcasts, aes(x = date, y = brier)) +
+  geom_point(alpha = .1) +
+  geom_smooth(aes(color = condition), se = FALSE)
+
+ggplot(all_fcasts, aes(x = date, y = brier)) +
+  geom_point(alpha = .1) +
+  geom_smooth(aes(color = interaction(condition, Forecaster)), se = FALSE)
+
+
+
 
 # Summary statistics ------------------------------------------------------
 
