@@ -13,39 +13,346 @@ in_dir  <- file.path(dropbox_path, "input-data")
 out_dir <- file.path(dropbox_path, "output")
 
 
-fcasts <- read_rds(file.path(out_dir, "user_forecasts_w_features.rds")) %>%
+user_fcasts <- read_rds(file.path(out_dir, "user_forecasts.rds")) %>%
   mutate(date = as.Date(date),
+         # x is just a date index for plotting, i think
          x = as.numeric(date) - min(as.numeric(date)),
          sees_chart = sees_chart==1,
          sees_model = sees_model==1) 
 
+machine_fcasts <- read_rds(file.path(out_dir, "machine_forecasts.rds"))
+
+data_sources <- read_csv(file.path(in_dir, "questions-with-answers.csv")) 
+
 #fcasts$sees_model <- factor(fcasts$sees_model, labels = c("No", "Yes"))
 #fcasts$sees_chart <- factor(fcasts$sees_chart, labels = c("No", "Yes"))
 
+df1 <- machine_fcasts %>%
+  select(ifp_id, date, has_historic_data, has_arima, needs_data_agg,
+         num_options, p_correct, brier) %>%
+  mutate(Forecaster = "Machine", condition = "n/a", sub_condition_1 = "n/a",
+         sees_chart = NA, sees_model = NA)
+df2 <- user_fcasts %>%
+  mutate(Forecaster = ifelse(turker, "Turker", "Volunteer")) %>%
+  select(ifp_id, date, has_historic_data, has_arima, needs_data_agg,
+         num_options, p_correct, brier, Forecaster, condition, sub_condition_1,
+         sees_chart, sees_model)
+all_fcasts <- bind_rows(df1, df2) %>%
+  left_join(data_sources %>% select(ifp_id, data_source), by = "ifp_id") %>%
+  replace_na(list(data_source = "other")) %>%
+  # add in summary info for chart/arima status
+  mutate(Data_status = case_when(
+    has_historic_data & has_arima ~ "Chart and model",
+    has_historic_data & !has_arima ~ "Chart only",
+    !has_historic_data ~ "None",
+    TRUE ~ NA_character_
+  ))
+
+# Human and machine forecasts during common period
+common_period <- all_fcasts %>%
+  filter(date >= "2018-05-02" & date <= "2018-08-02")
+
+
+# Summary statistics ------------------------------------------------------
+
+nrow(common_period)
+
+common_period %>%
+  group_by(Forecaster) %>%
+  summarize(n = n())
+
+by_ifp <- common_period %>%
+  group_by(ifp_id) %>%
+  summarize_at(vars(one_of("has_arima", "has_historic_data", "Data_status")), unique) %>%
+  group_by(has_arima, has_historic_data) %>%
+  summarize(Data_status = unique(Data_status), n = n()) 
+sum(by_ifp$n)
+by_ifp
+
+# Overall condition table
+cond_tbl <- common_period %>%
+  group_by(Forecaster) %>%
+  summarize(avg_Brier = mean(brier))
+cond_tbl
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Compare human and machine forecasts -------------------------------------
+
+ggplot(all_fcasts, aes(x = date, y = brier)) +
+  geom_point(alpha = .1) +
+  geom_smooth(aes(color = Forecaster), se = FALSE)
+
+ggplot(all_fcasts, aes(x = date, y = brier)) +
+  geom_point(alpha = .1) +
+  geom_smooth(aes(color = condition), se = FALSE)
+
+ggplot(all_fcasts, aes(x = date, y = brier)) +
+  geom_point(alpha = .1) +
+  geom_smooth(aes(color = interaction(condition, Forecaster)), se = FALSE)
+
+
+
+common_period %>%
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+
+table(common_period$Forecaster, common_period$condition)
+
+common_period %>%
+  filter(sub_condition_1 %in% c("team", "machine")) %>%
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+
+# 1892 Oil production in Iraq in June 2018
+# This is the question we used at the site visit to illustrate bad data. 
+# The B volunteers again did very well
+# C volunteers did worse than machine, but turker C did more like machine.
+f1892 <- filter(all_fcasts, ifp_id==1892)
+table(f1892$Forecaster, f1892$condition)
+f1892 %>% 
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+
+# 911 ICEWS Palestine
+# the ICEWS data were badly aggregated
+f911 <- filter(all_fcasts, ifp_id==911)
+table(f911$Forecaster, f911$condition)
+f911 %>% 
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+
+# activity by question
+fcasts_by_ifp <- all_fcasts %>%
+  group_by(ifp_id) %>%
+  summarize(avg_Brier = mean(brier), n = n()) %>%
+  arrange(desc(n))
+fcasts_by_ifp
+tail(fcasts_by_ifp)
+
+# 2126 had a lot of forecasts
+f2126 <- filter(all_fcasts, ifp_id==2126)
+table(f2126$Forecaster, f2126$condition)
+f2126 %>% 
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+
+# 2297
+f2297 <- filter(all_fcasts, ifp_id==2297)
+table(f2297$Forecaster, f2297$condition)
+f2297 %>% 
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+
+# low activity 
+# 1208
+f1208 <- filter(all_fcasts, ifp_id==1208)
+table(f1208$Forecaster, f1208$condition)
+f1208 %>% 
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+
+# 1235
+f1235 <- filter(all_fcasts, ifp_id==1235)
+table(f1235$Forecaster, f1235$condition)
+f1235 %>% 
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+
+# 1172
+f1172 <- filter(all_fcasts, ifp_id==1172)
+f1172 %>% 
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+
+# 1892
+f1892 <- filter(all_fcasts, ifp_id==1892)
+f1892 %>% 
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+
+# Look at groupings by question type
+common_period %>%
+  group_by(num_options, Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+
+# Look at groupings by data source
+by_source <- common_period %>%
+  group_by(data_source, Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n())
+by_source
+with(by_source[by_source$Forecaster=="Volunteer" & by_source$condition=="a", ],
+     plot(n, avg_Brier))
+with(by_source[by_source$Forecaster=="Volunteer" & by_source$condition=="b", ],
+     plot(n, avg_Brier))
+with(by_source[by_source$Forecaster=="Volunteer" & by_source$condition=="c", ],
+     plot(n, avg_Brier))
+with(by_source[by_source$Forecaster=="Volunteer", ], plot(n, avg_Brier))
+with(by_source[by_source$Forecaster=="Turker", ], plot(n, avg_Brier))
+with(by_source[by_source$Forecaster=="ARIMA", ], plot(n, avg_Brier))
+with(by_source, plot(n, avg_Brier))
+
+# selection effect, are forecasters in C forecasting on more difficult questions?
+
+# people in condition B who only forecasted once
+user_fcasts %>%
+  filter(condition=="b") %>%
+  group_by(user_id) %>%
+  summarize(n = n()) %>% pull(n) -> foo
+
+# a couple of heavyweights are pulling B
+user_fcasts %>% group_by(user_id, condition) %>% summarize(brier = mean(brier), n = n()) -> foo
+filter(foo, n > 200) %>% arrange(brier)
+
+# do people in B forecast more?
+user_fcasts %>% group_by(user_id, condition, turker) %>% summarize(brier = mean(brier), n = n()) -> foo
+foo %>% group_by(turker, condition) %>%
+  summarize(users = n(),
+            med_fcasts = median(n),
+            mean_fcasts = mean(n))
+
+# ok, back. let's look at forecasters who only forecasted a few times, and
+# spillover does not seem likely
+user_fcasts %>%
+  group_by(user_id) %>%
+  mutate(n_fcasts_by_user = n()) -> foo
+foo %>%
+  filter(!turker) %>%
+  group_by(condition, has_historic_data) %>%
+  summarize(mean(brier))
+# questions with historic data don't seem to be harder
+foo %>%
+  filter(condition=="b") -> foo
+foo %>%
+  group_by(has_historic_data) %>%
+  summarize(mean(brier))
+foo %>%
+  group_by(n_fcasts_by_user==1, has_historic_data) %>%
+  summarize(mean(brier))
+foo %>%
+  group_by(n_fcasts_by_user < 8, has_historic_data) %>%
+  summarize(mean(brier))
+
+# Look at it by how well the model did; when the model did well, did C do well, too?
+# Look at it when you take out the heavy users. Why would or would not short-term
+# users be impacted by platform design choices?
+
+# Summary statistics ------------------------------------------------------
+
+nrow(fcasts)
+
+# Unique IFPs
+length(unique(fcasts$ifp_id))
+
+# Forcasts by forecaster type
+table(fcasts$turker)
+
+# How many IFPs had no chart, no model?
 fcasts %>%
+  group_by(ifp_id) %>%
+  summarize(has_arima = unique(has_arima),
+            has_historic_data = unique(has_historic_data)) %>%
+  ungroup() %>%
+  summarize(ifps = n(),
+            has_arima = sum(has_arima),
+            has_historic_data = sum(has_historic_data))
+
+
+# Specific questions ------------------------------------------------------
+
+# 1003 Loya Jirga
+# System persistently kept showing wrong chart, with ACLED riots/protests
+# B volunteers have lower Brier on this, why?
+# C turkers as expected had worse score than A turkers
+f1003 <- filter(fcasts, ifp_id==1003)
+table(f1003$turker)
+table(f1003$condition)
+f1003 %>% 
+  group_by(turker, condition) %>%
+  summarize(avg_brier = mean(brier), n = n())
+
+# 1892 Oil production in Iraq in June 2018
+# This is the question we used at the site visit to illustrate bad data. 
+# The B volunteers again did very well
+# C volunteers did worse than machine, but turker C did more like machine.
+f1892 <- filter(fcasts, ifp_id==1892)
+table(f1892$turker)
+table(f1892$condition)
+f1892 %>% 
+  group_by(turker, condition) %>%
+  summarize(avg_brier = mean(brier), n = n())
+filter(machine_fcasts, ifp_id==1892) %>%
+  summarize(avg_brier = mean(brier), n = n())
+
+# 911 ICEWS Palestine
+# the ICEWS data were badly aggregated
+f911 <- filter(fcasts, ifp_id==911)
+table(f911$turker)
+table(f911$condition)
+f911 %>% 
+  group_by(turker, condition) %>%
+  summarize(avg_brier = mean(brier), n = n())
+filter(machine_fcasts, ifp_id==911) %>%
+  summarize(avg_brier = mean(brier), n = n())
+
+# 902 ICEWS Palestine
+# seems to not be in data
+
+
+# 866
+# the ICEWS data were badly aggregated
+f866 <- filter(fcasts, ifp_id==866)
+table(f911$turker)
+table(f911$condition)
+f911 %>% 
+  group_by(turker, condition) %>%
+  summarize(avg_brier = mean(brier), n = n())
+filter(machine_fcasts, ifp_id==911) %>%
+  summarize(avg_brier = mean(brier), n = n())
+
+# Conditions --------------------------------------------------------------
+
+
+user_fcasts %>%
+  group_by(condition) %>% 
+  summarize(mean_brier = mean(brier))
+user_fcasts %>%
+  filter(date >= "2018-05-02") %>%
   group_by(condition) %>% 
   summarize(mean_brier = mean(brier))
 
-fcasts %>%
+user_fcasts %>%
   group_by(turker, sees_chart, sees_model) %>%
   summarize(mean_brier = mean(brier))
 
-cond_tbl <- fcasts %>%
-  group_by(condition, turker, sees_chart, sees_model, has_arima) %>%
+cond_tbl <- user_fcasts %>%
+  group_by(condition, turker, sees_chart, sees_model, has_historic_data) %>%
   summarize(mean_brier = mean(brier),
             n_ifps = length(unique(ifp_id)),
             n_forecasts = n()) %>%
   ungroup() %>%
-  select(condition, turker, has_arima, sees_chart, sees_model, everything()) %>%
-  arrange(condition, turker, has_arima, sees_chart, mean_brier)
+  select(condition, turker, has_historic_data, sees_chart, sees_model, everything()) %>%
+  arrange(condition, turker, has_historic_data, sees_chart, mean_brier)
 
 cond_tbl %>%
-  arrange(condition, has_arima) %>%
+  arrange(condition, turker, has_historic_data) %>%
   mutate(condition = fct_recode(condition, A = "a", B = "b", C = "c"),
          turker = fct_recode(as.character(turker), Yes = "TRUE", No = "FALSE"),
-         has_arima = fct_recode(as.character(has_arima), Yes = "TRUE", No = "FALSE")
+         has_historic_data = fct_recode(as.character(has_historic_data), Yes = "TRUE", No = "FALSE")
          ) %>%
-  rename(Condition = condition, Turker = turker, `Has data` = has_arima, 
+  rename(Condition = condition, Turker = turker, `Has data` = has_historic_data, 
          `Saw chart` = sees_chart, `Saw model` = sees_model, 
          `Mean Brier` = mean_brier, Questions = n_ifps, Forecasts = n_forecasts) %>%
   write_csv("output/tables/brier-by-conditions.csv")
@@ -91,9 +398,14 @@ cond_tbl %>%
 fcasts %>%
   filter(condition!="b") %>%
   group_by(condition, turker) %>%
-  summarize(mean_brier = mean(brier)) %>%
-  select(condition, turker, has_arima, sees_chart, sees_model, mean_brier) %>%
-  arrange(condition, turker, has_arima, sees_chart, mean_brier)
+  summarize(mean_brier = mean(brier)) 
+# What if we cut off the initial period?
+fcasts %>%
+  filter(date >= "2018-05-02") %>%
+  filter(condition!="b") %>%
+  group_by(condition, turker) %>%
+  summarize(mean_brier = mean(brier)) 
+# Turkers do about .036, 0.031 worse
 
 # .168?
 fit <- lm(brier ~ turker + has_arima + sees_chart + sees_model, data = fcasts)
@@ -168,8 +480,61 @@ summary(lm(forecasts ~ mean_brier, data = ifp_tbl))
 
 
 
+# Do forecasters in different conditions choose easier questions?
+df2 <- fcasts %>% 
+  group_by(ifp_id, condition, turker, date) %>%
+  summarize(has_arima = unique(has_arima), 
+            has_historic_data = unique(has_historic_data),
+            MDB = mean(brier),
+            start_date = min(date)) %>%
+  group_by(ifp_id, condition, turker) %>% 
+  summarize(has_arima = unique(has_arima), 
+            has_historic_data = unique(has_historic_data), 
+            q_cond_n = n(),
+            avg_MDB = mean(MDB),
+            start_date = min(start_date)) %>% 
+  group_by(ifp_id) %>% 
+  mutate(q_n = sum(q_cond_n),
+         start_date = min(start_date)) %>% 
+  ungroup() %>% 
+  arrange(desc(q_n))
+ggplot(df2, aes(x = factor(ifp_id), y = avg_MDB)) +
+  geom_point()
+
+
 # Plots over time ---------------------------------------------------------
 
+
+# Grand plot of everything
+df1 <- user_fcasts %>%
+  filter(date > "2018-05-02") %>%
+  group_by(date, user_id, ifp_id, turker, condition) %>%
+  summarize(MDB = mean(brier), n = n(), has_historic_data = unique(has_historic_data)) %>%
+  ungroup() %>%
+  mutate(has_historic_data = factor(has_historic_data),
+         has_historic_data = fct_recode(has_historic_data, `IFP without data` = "FALSE", `IFP had data` = "TRUE"),
+         turker = factor(turker),
+         turker = fct_recode(turker, Turker = "TRUE", Volunteer = "FALSE"),
+         condition = factor(condition),
+         condition = fct_recode(condition, `A: no chart` = "a", `B: chart only` = "b", `C: chart and model` = "c")) %>%
+  rename(Forecaster = turker, Question = has_historic_data)
+ggplot(df1, aes(x = date, y = MDB, color = condition)) +
+  facet_grid(Forecaster ~ Question) +
+  geom_point(alpha = .02, aes(size = n)) +
+  scale_size(guide = FALSE) +
+  geom_smooth(se = FALSE, method = "gam", formula = y ~ s(x, bs = "cs")) +
+  theme_ipsum_rc() +
+  scale_y_continuous(limits = c(0, 1.01))
+
+# Table of MMDB for same groupings
+mmdb_by_cond_turker_data <- df1 %>%
+  group_by(ifp_id, Forecaster, Question, condition) %>%
+  summarize(MMDB = mean(MDB)) %>%
+  group_by(Forecaster, Question, condition) %>%
+  summarize(mMMDB = mean(MMDB)) %>%
+  spread(condition, mMMDB)
+mmdb_by_cond_turker_data %>%
+  knitr::kable(digits = 2)
 
 # Plot average MDB by turker/volunteer over course of RCT
 mean_daily_briers <- fcasts %>%
@@ -243,6 +608,30 @@ ggsave("output/figures/volunteers-only-accuracy-by-chartability-over-time.png", 
 
 fit_lm1 <- lm(brier ~ turker + has_arima + sees_chart + sees_model, data = fcasts)
 summary(fit_lm1)
+
+# Look only from when Turkers entered
+fit_lm2 <- lm(brier ~ turker + has_arima + sees_chart + sees_model, data = fcasts[fcasts$date >= "2018-05-02", ])
+summary(fit_lm2)
+
+# do with MDBs
+df <- fcasts %>%
+  filter(date >= "2018-05-02") %>%
+  group_by(ifp_id, date, turker, has_arima, sees_chart, sees_model) %>%
+  summarize(MDB = mean(brier))
+fit_lm3 <- lm(MDB ~ turker + has_arima + sees_chart + sees_model, data = df)
+summary(fit_lm3)
+
+# do with MMDBs, i.e. at IFP level
+df <- fcasts %>%
+  filter(date >= "2018-05-02") %>%
+  group_by(ifp_id, date, turker, has_arima, sees_chart, sees_model) %>%
+  summarize(MDB = mean(brier)) %>%
+  group_by(ifp_id, turker, has_arima, sees_chart, sees_model) %>%
+  summarize(MMDB = mean(MDB))
+fit_lm4 <- lm(MMDB ~ turker + has_arima + sees_chart + sees_model, data = df)
+summary(fit_lm4)
+
+
 
 summary(lm(brier ~ turker + sees_chart + sees_model + has_arima, data = fcasts[fcasts$date<"2018-06-15",]))
 summary(lm(brier ~ turker + sees_chart + sees_model + has_arima, data = fcasts[fcasts$date>="2018-06-16",]))

@@ -1,0 +1,4 @@
+has_arima,has_historic_data,Data_status,n
+FALSE,FALSE,None,101
+FALSE,TRUE,Chart only,6
+TRUE,TRUE,Chart and model,49

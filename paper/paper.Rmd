@@ -7,7 +7,7 @@ output:
     latex_engine: xelatex
 abstract: "\\noindent The Hybrid Forecasting Competition (HFC) is an ongoing project to develop hybrid geopolitical forecasting systems that combine human- and machine-generated forecasts. The first project trial period took place in 2018, during the course of which volunteer participants, Amazon Mechanical Turkers, and an automated time series forecasting module we developed provided forecasts for more than 150 questions covering a diverse set of topics. We investigate two questions: (1) how does the performance of turker forecasters compare to volunteers, and (2) what impact did access to the machine forecasts have on forecaster accuracy? \\newline \\newline
 "
-bibliography: "master.bib"
+bibliography: "../../whistle/master.bib"
 header-includes:
   - 
 ---
@@ -39,37 +39,41 @@ We worked on one of the competition teams, and specifically by contributing a ti
 
 The goal of the HFC is to find ways to optimally combine human and machine forecasts. For example, machine forecasts can be reliable and scalable, but are constrained by available data, idiosyncratic questions, and cold start problems when a corpus of historical data is not available. Human-generated forecasts on the other hand are more flexible, but also more costly to scale and subject to various cognitive biases.[e.g. @kahneman:2011]. 
 
-The competition is organized around a series of official trial periods ("RCTs") during which forecasters can actively forecast on official competition questions, and the results of which are used for subsequent project evaluations. Time between the trial periods is reserved for development and improvements, as well as any internal, non-official experiments performers might choose to run. 
+The competition is organized around Good Judgement-style forecasting tournaments [@tetlock:2005, @tetlock:etal:2017], where forecasters answer and are scored on a diverse pool of questions. Examples from the first trial period, RCT-A, include:
 
-During the trial periods, performer teams are competing against a reference forecast, with the ultimate goal being to find methods or tools that provide superior forecasts. 
+- What will be the long-term interest rate for South Africa (ZAF) in July 2018?
+- How many deaths perpetrated by Boko Haram will the Council on Foreign Relations report for June 2018?
+- What will be the daily closing spot price of Brent crude oil (USD per barrel) on 31 May 2018, according to the U.S. EIA?
 
-Each entry, at the core, consists of a Good Judgement-style platform that can receive competition questions (IFPs in project parlance) and show them to users, who then provide probabilistic forecasts for a set of 2-5 answer options. 
+Each question includes 2 to 5 answer options to which forecasters must assign weights summing to 1. Performance for a single forecast is then based on an ordered multinomial Brier score. 
 
-The original goal was for the project to recruit a sufficient number of volunteer forecasters to provide each performing team with the numbers needed to forecast at the rate at which questions are generated during the trial periods. When it became apparent, several weeks into the first trial period, that the level of forecasting activity was not going to be sufficient for adequate evaluations, a contingency plan was activated whereby additional forecasters (turkers) were provided with Amazon Mechnanical Turk. 
+In addition to this basic "human forecaster" tournament, competitors were expected to implement features that would in some fashion or agument these human forecasts with machine-generated tools and forecasts. An explicity requirement for the latter is that they are automated systems, e.g. an ad-hoc hand-tuned and expert-implemented machine model to forecast on a question would not be allowed, rather it would have to be a system that can generate such a model. On the other hand, if a forecaster has the skills and inclination to use data and model as a forecasting tool, that is perfectly allowed. 
 
 ## SAGE approach
 
-One of the features of our project's platform is functionality that for questions that have a clearly associated data stream, e.g. questions about interest rates or gold prices, acquires the relevant data source and displays it to users in a chart. 
+One of the distinguishing features of our team's approach was a system that could automatically associate some of the RCT-A questions with a clearly corresponding time series and display these to a forcaster. This is based on a data platform which automatically collects and updates data from a variety of sources, and which can associate questions, based on their title, to an appropriate transformation of a data set if it is in the platform and matches a known, pre-specified pattern or template. If data is found for a question, it can then be shown to users as a simple time series chart accompanying the relevant question. 
 
-This same data platform also feeds a module, "basil-ts", that uses a simple time series model to derive probabilties for the question answer options. This was one of our main machine-forecast providers during the first trial period. 
-
-To ensure scalability, both the data platform and forecasting module are required, by competition rules, to be largely automated. 
-
-Most of the difficulty in implementing basil-ts was related to the automation requirements, not the actual modeling. E.g. it has to be able to identify the temporal resolution in both the question and the input time series, e.g. is it daily or monthly, how far ahead to forecast, whether there are any constraints on the data and thus forecast, e.g. is it a count series that cannot take on negative values. 
+Additionally, we could use the time series to generate a machine forecast based on a univariate ARIMA model, and which then would either be shown to a user, and/or submitted seperately as a standalone forecast. The module generating these forecasts, "basil-ts", was based on the Auto ARIMA model in @hyndman:khandakar:2008, which consists of a ARIMA-family model with an automated algorithm for determining a reasonble specific model structure, e.g. whether and how many differencing orders to apply, AR and MA orders, and some other parameters. This is wrapped in additional functionality needed to meet the automation requirements, e.g. recognizing how far a forecast needs to extend, data pre-processing, converting time series to answer option forecasts, updating forecasts with additional information if available, etc. 
 
 ## Research design for RCT-A
 
-The original research design split forecasters into three groups. The first, control, group only had access to a basic version of the platform that displays the question and answer options, but without any additional information. The second group, B, could also see a chart displaying historic data values relevant to the question at hand. The third group, C, in addition to the chart could also see the machine forecast. All forecasters, regardless of group, were forecasting on the same set of questions. 
+Since the scientific goal of HFC is to evaluate various hybrid forecasting techniques, the pripmary aspect of our research design for RCT-A was designed to assess what impact exposure to the time series charts and model forecasts would have on human forecaster accuracy. Incoming forecasters were assigned to one of three experimental conditions. The first group, A, served as control group and only had access to a basic version of the online platform showin the question information and tools to enter weights for the answer options. The second group, B, could also see the time series charts, and the third group, C, could see the chart and machine forecast. All forecasters, regardless of group, were forecasting on the same set of questions. 
 
-| Condition | Treatment                 | Population             | 
-|-----------|---------------------------|------------------------|
-|A          |None; control              | Volunteers and Turkers |
-|B          |Chart                      | Volunteeers            |
-|C          |Chart and machine forecast | Volunteers and Turkers |
+There were elements in the research design to assess other design choices but they are not relevant to the set of questions we seek to examine here, thus we will not discuss them. 
 
-Table: Summary of original research design and eventual forecaster populations.
+| Condition | Treatment                 | 
+|-----------|---------------------------|
+|A          |None; control              |
+|B          |Chart                      |
+|C          |Chart and machine forecast |
+
+Table: Summary of original research design.
+
+### Turker 
 
 Due to lower than expected activity levels, turker forecasters started to be provided several weeks intot he first trial period. Given activity levels at that time, a decision was made to assign turkers to either condition A or C, but not B. This mean that the group whose treatment was to only see charts (B) consisted only of volunteers, while the other two groups contained mixed populations of volunteers and turkers, thus adding a confounding factor for assessing the impact of charts and machine models. 
+
+### Time series data was not available for all questions
 
 Additionally, chartable data was only available for about a third of the questions. The chart and model treatments thus are really part of a nested three layer set of factors: whether a question had chartable data, then whether a chart was displayed to a user, then whether a machine forecast was also displayed to a user. Whether a question had associated data depended very much on the type of question, ranging from questions like "What will be the gold price on [date]" where there is a clearly relevant time series that is easy to acquire and update, to "How many battle deaths will ACLED report in [country] in [date]?" where data are available but have to be transformed to a relevant series, to, on the other end, questions like "Who will win the World Cup?" where it is exceedingly difficult to acquire relevant time series data. Thus it is also possible that questions with chartable and without chartable data were systemtically different in their difficutly and average acccuracy levels. 
 
@@ -88,7 +92,9 @@ The effects of the two randomly assigned treatments, seeing a chart and seeing a
 | C.3 |   | X | X | X |
 | C.4 | X | X | X | X |
 
-Table: Treatment by group after addition of turkers to conditions A and C. 
+Table: Effective treatments by group after addition of turkers to conditions A and C. 
+
+### Varying quality of data and machine forecasts over time
 
 To complicate matters further, the quality of the data acquisition and machine forecasting modules changed over time during the RCT. Once a broader set of questions started flowing into the platform when the RCT started, a range of issues affecting both data quality and machine forecast quality arose. Examples include:
 
@@ -98,8 +104,6 @@ To complicate matters further, the quality of the data acquisition and machine f
 - A limitation in the way Elastic Search aggregates non-standard fixed length time periods, e.g. periods of 40 days, required that for some questions data aggregation had to occur in the forecasting module, as opposed to data platform module, unlike planned. 
 
 Most of these issues and bugs were fixed during the course of the RCT, and thus the quality of both the data and machine forecasts should have improved over time. 
-
-Given that we (Predictive Heuristics) implemented the time series forecasting module, we are primarily interested in the impact that seeing machine forecasts had on the quality of human forecasts. We know from early results that the machine forecasts were generally not as accurate as the human forecasts. 
 
 # Design, data, and method
 
@@ -122,16 +126,35 @@ Now on two tracks:
 
 ## Data
 
-The first trial period lasted from March 7th to September 7th 2018. The data used in the analysis below consist of `r nrow(fcasts) %>% format(big.mark = ",")` forecasts made by `r length(unique(fcasts$user_id)) %>% format(big.mark = ",")` distinct users on `r length(unique(fcasts$ifp_id))` questions during this period. The first turker forecasts were on May 2nd. 
+RCT-A lasted from March 7th to September 7th 2018. However, Turkers did not enter until May 2nd, and for an unrelated reason we also discard data after August 2nd. This leaves a total of 48,931 forecasts---7,816 from volunteer forecasters, 39,140 from Turkers, and 1,975 from machine---for 156 IFPs, of which 101 did not have TS data, 6 had TS data but not a machine forecast, and 49 had both TS data and a machine forecast. 
 
-![Average mean daily Brier score (MDB) by forecaster type over time. Both volunteers and turkers improved over time.](../output/figures/mdb-turker-over-time.png)
+
 
 
 # Results
 
 ## Basic findings
 
+### Brier over time
+
+Make point here that Brier generaly decreased over time? Maybe questions easier, maybe forecasters learn over time? Just establish that all analysis from here is for May 2nd and on only. 
+
+### Other 
+
 Machine forecasts were not more accurate than human forecasts. 
+
+
+|Forecaster |Question         | A: no chart| B: chart only| C: chart and model|
+|:----------|:----------------|-----------:|-------------:|------------------:|
+|Volunteer  |IFP without data |        0.15|          0.09|               0.12|
+|Volunteer  |IFP had data     |        0.25|          0.22|               0.28|
+|Turker     |IFP without data |        0.15|            NA|               0.14|
+|Turker     |IFP had data     |        0.28|            NA|               0.27|
+
+Table: MMDB by forecaster, data availability, and condition.
+
+The low MMDB for condition B forecasters appears to be primarily driven by good performance on questions that *did not* have charts (keeping in mind that 2/3 of questions would not have had a chart).
+
 
 ```{r tbl-accuracy-by-condition}
 read_csv("../output/tables/brier-by-conditions.csv") %>%
