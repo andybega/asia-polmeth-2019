@@ -9,11 +9,15 @@ abstract: "\\noindent The Hybrid Forecasting Competition (HFC) is an ongoing pro
 "
 bibliography: "../../whistle/master.bib"
 header-includes:
-  - 
+  - \usepackage{mathpazo}
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library("readr")
+library("dplyr")
+library("knitr")
 ```
 
 
@@ -111,13 +115,12 @@ RCT-A lasted from March 7th to September 7th 2018. However, Turkers did not ente
 
 # Results
 
-|Forecaster | avg_Brier|     n|
-|:----------|---------:|-----:|
-|Machine    |     0.386|  1975|
-|Turker     |     0.433| 39140|
-|Volunteer  |     0.322|  7816|
-
-Table: Average Brier score by forecaster group. 
+```{r}
+knitr::opts_current$set(label = "brier-by-forecaster")
+tbl <- read_csv("../output/tables/brier-by-forecaster.csv")
+knitr::kable(tbl, format = "latex", digits = 2, booktabs = TRUE,
+             caption = "Average Brier score by forecaster group")
+```
 
 Volunteers who had only charts did the best
 
@@ -171,63 +174,39 @@ In most groups volunteers have an advantage sufficient to generate p-values belo
 
 ## Chart and model effects
 
-Teasing out the chart and model effects is a bit harder through pairwise comparison. 
+Teasing out the chart and model effects is a bit harder through pairwise comparison. Instead, we directly coded whether a forecaster saw a chart or model forecast. Forcasters in conditions B and C and for questions that had a chart saw a chart, and forecasters in condition C looking at a question which had a machine forecast will have seen a model forecast. We also leave out the machine forecasts from the data, leaving almost 47,000 forecasts, of which about 25% were made with a chart available, and 21% also had a model forecast available. 
 
-Add in the LM and LMER model results here. 
+We estimated two linear models to predict Brier scores for a forecast. The first had the specifiction:
 
-```
-Coefficients:
-                          Estimate Std. Error t value Pr(>|t|)    
-(Intercept)               0.447126   0.002887 154.862  < 2e-16 ***
-ForecasterVolunteer      -0.104321   0.006208 -16.805  < 2e-16 ***
-IFP_GroupChart only       0.142377   0.017834   7.984 1.45e-15 ***
-IFP_GroupChart and model -0.063318   0.008648  -7.322 2.48e-13 ***
-sees_chartTRUE           -0.038067   0.015751  -2.417   0.0157 *  
-sees_modelTRUE            0.042337   0.015251   2.776   0.0055 ** 
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+\[
+\textrm{Brier} \sim \alpha + \beta_1\textrm{Sees model} + \beta_2\textrm{Sees chart} + \beta_3\textrm{}
+\]
 
-Residual standard error: 0.4776 on 46950 degrees of freedom
-Multiple R-squared:  0.01339,	Adjusted R-squared:  0.01328 
-F-statistic: 127.4 on 5 and 46950 DF,  p-value: < 2.2e-16
-```
-
-```
-Linear mixed model fit by REML ['lmerMod']
-Formula: brier ~ Forecaster + IFP_Group + sees_chart + sees_model + (1 |      ifp_id)
-   Data: common_period[common_period$Forecaster != "Machine", ]
-
-REML criterion at convergence: 50272.9
-
-Scaled residuals: 
-    Min      1Q  Median      3Q     Max 
--2.9464 -0.5432 -0.2071  0.3053  4.9013 
-
-Random effects:
- Groups   Name        Variance Std.Dev.
- ifp_id   (Intercept) 0.06386  0.2527  
- Residual             0.16808  0.4100  
-Number of obs: 46956, groups:  ifp_id, 156
-
-Fixed effects:
-                          Estimate Std. Error t value
-(Intercept)               0.438521   0.025392  17.270
-ForecasterVolunteer      -0.077777   0.005519 -14.091
-IFP_GroupChart only       0.160131   0.107529   1.489
-IFP_GroupChart and model -0.061051   0.044711  -1.365
-sees_chartTRUE           -0.021495   0.013689  -1.570
-sees_modelTRUE            0.026931   0.013280   2.028
-
-Correlation of Fixed Effects:
-            (Intr) FrcstV IFP_Go IFP_am ss_cTRUE
-FrcstrVlntr -0.042                              
-IFP_GrpChro -0.237  0.029                       
-IFP_GrpCham -0.567  0.005  0.140                
-ss_chrtTRUE  0.011 -0.266 -0.099 -0.066         
-ses_mdlTRUE -0.012  0.284  0.081 -0.016 -0.816  
-```
+The intercept $\alpha$ corresponds to the average Brier score for a Turker forecasting on a IFP that did not have chartable data, and who neither saw a chart nor machine forecast. 
 
 Relatively consistent resulst. First, turkers have worse performance. Second, seeing a chart somewhat helps, seeing a model somewhat hurts. 
+
+\begin{figure}
+\caption{\label{fig:model-chart-and-model-effects} Model estimates}
+\includegraphics{../output/figures/model-chart-and-model-effects.png}
+\end{figure}
+
+\begin{table}
+\caption{\label{tab:mdl-summary-stats}foo}
+\centering
+\begin{tabular}[t]{llr}
+\toprule
+Model & Statistic & Value\\
+\midrule
+Model 1: Linear model & N & 46956\\
+ & R$^2$ & 0.013\\
+ & Adj. R$^2$ & 0.013\\
+Model 2: Linear model with IFP random intercepts & N & 46956\\
+ & Marginal R$^2$ & 0.011\\
+ & Conditional R$^2$ & 0.283\\
+\bottomrule
+\end{tabular}
+\end{table}
 
 ## Models generally were disappointing, but did they do well in certain areas?
 

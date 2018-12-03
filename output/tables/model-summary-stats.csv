@@ -1,0 +1,7 @@
+Model,Statistic,Value
+Model 1: Linear model,N,46956
+,R^2,0.013388108715090757
+,Adj. R^2,0.013283038226135968
+Model 2: Linear model with IFP random intercepts,N,46956
+,Marginal R^2,0.010509108386856706
+,Conditional R^2,0.28294372728733175

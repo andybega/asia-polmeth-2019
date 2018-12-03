@@ -137,7 +137,7 @@ turker_pairs <- common_period %>%
   filter(condition!="b") %>%
   mutate(Condition = fct_recode(Condition, `C: chart and model` = "Machine")) %>%
   mutate(Forecaster = factor(Forecaster, levels = c("Turker", "Volunteer", "Machine"))) %>%
-  unite(Group, Condition, IFP_Group)
+  unite(Group, Condition, IFP_Group, sep = "\n")
 group_all <- turker_pairs %>%
   mutate(Group = "All") 
 turker_pairs <- bind_rows(turker_pairs, group_all) %>%
@@ -159,17 +159,62 @@ turker_pairs %>%
   geom_hline(yintercept = 0, linetype = 3) +
   theme_minimal() +
   labs(y = "Average Brier / change in Average Brier") +
-  theme(legend.position = "top")
+  theme(legend.position = "top") +
+  scale_color_discrete("Coefficient:")
 ggsave("output/figures/pairwise-comparisons-turker.png", height = 4, width = 7)
 
 
 
 # Linear models for chart/model effects -----------------------------------
+#
+#   Maybe add an interaction model here?
+#   summary(lm(brier ~ Forecaster + IFP_Group + sees_chart:Forecaster + sees_model:Forecaster, data = common_period_no_machine))
+#
 
-summary(lm(brier ~ Forecaster + IFP_Group + sees_chart + sees_model, data = common_period[common_period$Forecaster!="Machine", ]))
 
-summary(lmer(brier ~ Forecaster + IFP_Group + sees_chart + sees_model + (1|ifp_id), common_period[common_period$Forecaster!="Machine", ]))
 
+common_period_no_machine <- common_period[common_period$Forecaster!="Machine", ]
+
+# % who saw a chart
+table(common_period_no_machine$sees_chart) / nrow(common_period_no_machine) * 100
+# % who saw a model
+table(common_period_no_machine$sees_model) / nrow(common_period_no_machine) * 100
+
+mdl1 <- lm(brier ~ Forecaster + IFP_Group + sees_chart + sees_model, 
+           data = common_period_no_machine)
+mdl2 <- lmer(brier ~ Forecaster + IFP_Group + sees_chart + sees_model + (1|ifp_id),
+             data = common_period_no_machine)
+
+bind_rows(
+  tidy(mdl1) %>% mutate(Model = "Model 1: linear model"),
+  tidy(mdl2) %>% mutate(Model = "Model 2: linear model with IFP random intercepts") %>%
+    filter(group=="fixed")
+) %>%
+  mutate(term = factor(term) %>% fct_recode(`Baseline\nForecasterTurker, IFP_GroupNo_TS_data` = "(Intercept)")) %>%
+  ggplot(aes(x = term, color = Model)) +
+  geom_pointrange(aes(y = estimate, ymin = estimate - 1.96*std.error, ymax = estimate + 1.96*std.error),
+                  position = position_dodge(width = .5)) +
+  coord_flip() +
+  geom_hline(yintercept = 0, linetype = 3) +
+  theme_minimal() +
+  labs(y = "Outcome: Brier score", x = "Coefficient") +
+  theme(legend.position = "top") +
+  scale_color_discrete("Model:")
+ggsave("output/figures/model-chart-and-model-effects.png", height = 4, width = 7)
+
+mdl_summary_stats <- tibble(
+  Model = c("Model 1: Linear model", rep("", 2),
+            "Model 2: Linear model with IFP random intercepts", rep("", 2)),
+  Statistic = c("N", "R^2", "Adj. R^2", "N", "Marginal R^2", "Conditional R^2"),
+  Value = c(length(resid(mdl1)), summary(mdl1)$r.squared, summary(mdl1)$adj.r.squared,
+            length(resid(mdl2)), MuMIn::r.squaredGLMM(mdl2))
+)
+
+write_csv(mdl_summary_stats, "output/tables/model-summary-stats.csv")
+
+mdl_summary_stats %>%
+  knitr::kable(format = "latex", digits = 3,
+               caption = "foo", booktabs = TRUE)
 
 
 
