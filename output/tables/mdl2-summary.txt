@@ -1,0 +1,32 @@
+Linear mixed model fit by REML ['lmerMod']
+Formula: brier ~ Forecaster + IFP_Group + sees_chart + sees_model + (1 |      ifp_id)
+   Data: common_period_no_machine
+
+REML criterion at convergence: 50272.9
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-2.9464 -0.5432 -0.2071  0.3053  4.9013 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ ifp_id   (Intercept) 0.06386  0.2527  
+ Residual             0.16808  0.4100  
+Number of obs: 46956, groups:  ifp_id, 156
+
+Fixed effects:
+                          Estimate Std. Error t value
+(Intercept)               0.438521   0.025392  17.270
+ForecasterVolunteer      -0.077777   0.005519 -14.091
+IFP_GroupChart only       0.160131   0.107529   1.489
+IFP_GroupChart and model -0.061051   0.044711  -1.365
+sees_chart               -0.021495   0.013689  -1.570
+sees_model                0.026931   0.013280   2.028
+
+Correlation of Fixed Effects:
+            (Intr) FrcstV IFP_Go IFP_am ss_chr
+FrcstrVlntr -0.042                            
+IFP_GrpChro -0.237  0.029                     
+IFP_GrpCham -0.567  0.005  0.140              
+sees_chart   0.011 -0.266 -0.099 -0.066       
+sees_model  -0.012  0.284  0.081 -0.016 -0.816

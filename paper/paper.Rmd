@@ -5,11 +5,12 @@ date: "`r Sys.Date()`"
 output: 
   pdf_document:
     latex_engine: xelatex
+    keep_tex: true
 abstract: "\\noindent The Hybrid Forecasting Competition (HFC) is an ongoing project to develop hybrid geopolitical forecasting systems that combine human- and machine-generated forecasts. The first project trial period took place in 2018, during the course of which volunteer participants, Amazon Mechanical Turkers, and an automated time series forecasting module we developed provided forecasts for more than 150 questions covering a diverse set of topics. We investigate two questions: (1) how does the performance of turker forecasters compare to volunteers, and (2) what impact did access to the machine forecasts have on forecaster accuracy? \\newline \\newline
 "
 bibliography: "../../whistle/master.bib"
 header-includes:
-  - \usepackage{mathpazo}
+  - \usepackage[T1]{fontenc}
 ---
 
 ```{r setup, include=FALSE}
@@ -18,6 +19,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library("readr")
 library("dplyr")
 library("knitr")
+library("tidyr")
 ```
 
 
@@ -58,7 +60,7 @@ There were elements in the research design to assess other design choices but th
 |B          |Chart                      |
 |C          |Chart and machine forecast |
 
-Table: Summary of original research design.
+Table: Summary of original research design. \label{tab:original-design}
 
 Comparison of groups A and B should have shown the effect of seeing a time series chart, and of groups B and C for the effect of seeing a model forecast. In practice, there were issues that complicated the effective design or forecaster groupings and treatments:
 
@@ -66,7 +68,7 @@ Comparison of groups A and B should have shown the effect of seeing a time serie
 - **Gaps in data and machine coverage**. Only about 1/3 of IFPs had time series data available, meaning that within each condition group, most questions did not have a chart nor model. There was also a small number of instances where data was available, but a machine forecast was not. One example were questions related to FluNet influenza case counts, where a change in the data source broke the ability to update chart data, which would have required models to forecast over excessive time horizons. Since the availability of data was related to the type of question, it is not possible to rule out the possibility that questions with data were systematically different in their difficulty from questions without data. 
 - **Changes in the data and machine forecasting platforms over time**. Both the data platform and the machine forecasting system suffered from various bugs and related issues, especially during the earlier portions of RCT-A. These problems in some cases resulted in incorrectly aggregated or otherwise inaccurate data, insufficient updating which led to data in the platform falling behind source availability and thus requiring forecasts over longer time periods than neccessary, and bugs in the machine forecaster that led to no or bad forecasts. The quality of the data and machine forecasts displayed to some users thus varied over time and IFPs, in ways that are difficult to reconstruct in retrospective. 
 
-In respect to the first two problems, which we can quantify, the effective treatment groups were more complicated and are showin in Table XX.
+In respect to the first two problems, which we can quantify, the effective treatment groups were more complicated and are showin in Table \ref{tab:all-conditions}.
 
 
 | Group|Condition          |Forecaster |IFP_Group       |Sees chart? |Sees model? |
@@ -88,7 +90,7 @@ In respect to the first two problems, which we can quantify, the effective treat
 |    15|C: chart and model |Volunteer  |Chart and model |X           |X           |
 |    16|Machine            |Machine    |Chart and model |            |            |
 
-Table: Effective treatments by group after addition of turkers to conditions A and C. 
+Table: Effective treatments by group after addition of turkers to conditions A and C. \label{tab:all-conditions}
 
 # Design, data, and method
 
@@ -124,49 +126,38 @@ knitr::kable(tbl, format = "latex", digits = 2, booktabs = TRUE,
 
 Volunteers who had only charts did the best
 
-|Forecaster | A: no chart| B: chart only| C: chart and model| Machine|
-|:----------|-----------:|-------------:|------------------:|-------:|
-|Machine    |          NA|            NA|                 NA|   0.386|
-|Turker     |       0.436|            NA|              0.432|      NA|
-|Volunteer  |       0.297|          0.25|              0.372|      NA|
+```{r}
+options(knitr.kable.NA = '')
+knitr::opts_current$set(label = "brier-by-forecaster-condition")
+tbl <- read_csv("../output/tables/brier-by-forecaster-condition.csv")
+tbl %>%
+  spread(Condition, avg_Brier) %>%
+  knitr::kable(., format = "latex", digits = 2, booktabs = TRUE,
+             caption = "Average Brier score by forecaster group")
+```
 
-Table: Average Brier score by forecaster and condition groups.
+Table \ref{tab:brier-by-forecaster-ifp-group-condition} summarizes the average Brier scores for all 16 treatment/forecaster/IFP groups in Table XX. As it is quite unwieldy, we include it for reference and will discuss specific insights in more details below. 
 
+```{r brier-by-forecaster-ifp-group-condition}
+knitr::opts_current$set(label = "brier-by-forecaster-ifp-group-condition")
+tbl <- read_csv("../output/tables/brier-by-forecaster-ifp-group-condition.csv")
+knitr::kable(tbl, digits = 2, format = "latex", booktabs = TRUE, 
+             caption = "Average Brier scores for all 15 distinct human IFP/treatment groups, as well as the machine forecasts",
+             linesep = c(rep("", 5), '\\addlinespace', 
+                         rep("", 2), '\\addlinespace', 
+                         rep("", 5), '\\addlinespace'))
+```
 
-
-Table XX summarizes the average Brier scores for all 16 treatment/forecaster/IFP groups in Table XX. As it is quite unwieldy, we include it for reference and will discuss specific insights in more details below. 
-
-
-| Group|Condition          |Forecaster |IFP_Group       | avg_Brier| sd_Brier|     n|
-|-----:|:------------------|:----------|:---------------|---------:|--------:|-----:|
-|     1|A: no chart        |Turker     |No TS data      |      0.45|     0.50|  6690|
-|     2|A: no chart        |Turker     |Chart only      |      0.55|     0.56|   304|
-|     3|A: no chart        |Turker     |Chart and model |      0.39|     0.40|  2907|
-|     4|A: no chart        |Volunteer  |No TS data      |      0.31|     0.54|   510|
-|     5|A: no chart        |Volunteer  |Chart only      |      0.36|     0.46|    18|
-|     6|A: no chart        |Volunteer  |Chart and model |      0.28|     0.34|   274|
-|     7|B: chart only      |Volunteer  |No TS data      |      0.26|     0.48|  1702|
-|     8|B: chart only      |Volunteer  |Chart only      |      0.42|     0.42|    57|
-|     9|B: chart only      |Volunteer  |Chart and model |      0.23|     0.31|   973|
-|    10|C: chart and model |Turker     |No TS data      |      0.45|     0.50| 19502|
-|    11|C: chart and model |Turker     |Chart only      |      0.56|     0.52|   990|
-|    12|C: chart and model |Turker     |Chart and model |      0.38|     0.40|  8747|
-|    13|C: chart and model |Volunteer  |No TS data      |      0.38|     0.60|  3090|
-|    14|C: chart and model |Volunteer  |Chart only      |      0.59|     0.57|    73|
-|    15|C: chart and model |Volunteer  |Chart and model |      0.32|     0.40|  1119|
-|    16|Machine            |Machine    |Chart and model |      0.39|     0.36|  1975|
-
-Table: Average Brier scores for all 15 distinct human IFP/treatment groups, as well as the machine forecasts. 
 
 ## Turkers generally did worse
 
-Turkers overall had worse forecast accuracy than either the machine models or volunteers. To rule a spurious relationship, we can compare the accuracy in directly comparable pairs, e.g. rows 1 and 4 in Table XX consists of the average Brier scores for questions without TS data and in condition A treatment group for turkers and volunteers respectively, and show a difference of 0.14. 
+Turkers overall had worse forecast accuracy than either the machine models or volunteers. To rule a spurious relationship, we can compare the accuracy in directly comparable pairs, e.g. rows 1 and 4 in Table \ref{tab:brier-by-forecaster-ifp-group-condition} consists of the average Brier scores for questions without TS data and in condition A treatment group for turkers and volunteers respectively, and show a difference of 0.14. 
 
 Figure \ref{fig:turkers} shows the results of pairwise comparisons of the average Brier scores for all groups relative to Turker forecasters. Each row in the plot corresponds to a linear model for forecasters from the corresponding condition and IFP group, and the pointranges show coefficient estimates and 95\% confidence intervals for Turkers, Machine, and Volunteer forecasters. The Turker values correspond to the average Brier for them in this grouping, while the Machine and Volunteer estimates indicate the *relative* performance. I.e. for them, values below zero indicate an improvment. Note that the x-scale is reversed, so that better is further to the right. 
 
 \begin{figure}
 \label{fig:turkers}
-\caption{Pairwise comparisons of turker versus machine and volunteer forecast accuracy. Each row shows estimates from a linear regression model with turkers as reference group, for different groupings of the experimental conditions and IFP data/model availability. The turker estimates (red dots) correspond to the average Brier for turker forecasters, while the other estimates correspond to the relative difference from the turker average for other forecasters. Points further to the right correspond to lower Brier scores, i.e. better peformance.}
+\caption{Pairwise comparisons of turker versus machine and volunteer forecast accuracy. Each row shows estimates from a linear regression model with turkers as reference group, for different groupings of the experimental conditions and IFP data/model availability. The turker estimates (red dots) correspond to the average Brier for turker forecasters, while the other estimates correspond to the relative difference from the turker average for other forecasters. Points further to the right correspond to lower Brier scores, i.e. better peformance. Volunteers on average performed better than turker forecasters in all conditions and question groups, except on the small number of charts-only IFPs, where estimates are uncertain.}
 \includegraphics{../output/figures/pairwise-comparisons-turker.png}
 \end{figure}
 
@@ -176,43 +167,157 @@ In most groups volunteers have an advantage sufficient to generate p-values belo
 
 Teasing out the chart and model effects is a bit harder through pairwise comparison. Instead, we directly coded whether a forecaster saw a chart or model forecast. Forcasters in conditions B and C and for questions that had a chart saw a chart, and forecasters in condition C looking at a question which had a machine forecast will have seen a model forecast. We also leave out the machine forecasts from the data, leaving almost 47,000 forecasts, of which about 25% were made with a chart available, and 21% also had a model forecast available. 
 
-We estimated two linear models to predict Brier scores for a forecast. The first had the specifiction:
+We estimated two linear models to predict Brier scores for a forecast. The first has the specifiction:
 
-\[
-\textrm{Brier} \sim \alpha + \beta_1\textrm{Sees model} + \beta_2\textrm{Sees chart} + \beta_3\textrm{}
-\]
+$$
+\begin{aligned}
+\textrm{Brier} =~& \alpha + \beta_1\textrm{SeesModel} + \beta_2\textrm{SeesChart} + \beta_3\textrm{IFPGroupChartOnly} + \beta_4\textrm{IFPGroupChartAndModel} \\
+ & + \beta_5\textrm{ForecasterVolunteer} 
+\end{aligned}
+$$
 
-The intercept $\alpha$ corresponds to the average Brier score for a Turker forecasting on a IFP that did not have chartable data, and who neither saw a chart nor machine forecast. 
+All variables are dummy terms. The intercept $\alpha$ corresponds to the average Brier score for a Turker forecasting on an IFP that did not have chartable data, and who neither saw a chart nor machine forecast. 
 
-Relatively consistent resulst. First, turkers have worse performance. Second, seeing a chart somewhat helps, seeing a model somewhat hurts. 
+The second model includes random intercepts for IFP to account for the possibility that seeings charts or models may make users differentially willing to forecast on harder IFPs, i.e. those with higher average Brier scores. Otherwise the specification of covariates is the same.
+
+$$
+\begin{aligned}
+\textrm{Brier} =~& \alpha_{\textrm{Global}} + \alpha_{\textrm{IFP}} + \beta_1\textrm{SeesModel} + \beta_2\textrm{SeesChart} + \beta_3\textrm{IFPGroupChartOnly}  \\
+ & + \beta_4\textrm{IFPGroupChartAndModel} + \beta_5\textrm{ForecasterVolunteer} 
+\end{aligned}
+$$
+
+Figure \ref{fig:model-chart-and-model-effects} plots the coefficient estimates from both models. The results are consistent. Seeing a chart slightly helps, seeing a model slightly hurts forecast performance. However, the effects are small and not as important as whether a forecasters was a volunteer or turker. In addition, the models themselves capture only a small portion of the variation in Brier scores overall. Table \ref{tab:model-summary-stats} shows $R^2$ statistics for both models. The covariates account for less than 0.01 of the variation in Brier scores; the inclusion of random IFP intercepts in model 2 increases this to 0.28 (conditional $R^2$), but the fraction explained by the covariates together is still 0.01 (marginal $R^2$). Most of the variation remains either between forecasters or due to other random factors. 
+
+Thus, while we find that exposure to charts and model forecasts has a small impact on forecast quality, the effect sizes are small in comparison to other systematic factors in the model, and small relative to unsystematic and random factors not in the model. 
 
 \begin{figure}
-\caption{\label{fig:model-chart-and-model-effects} Model estimates}
+\caption{\label{fig:model-chart-and-model-effects} Model estimates for the direct effects of seeing a chart and machine forecast.}
 \includegraphics{../output/figures/model-chart-and-model-effects.png}
 \end{figure}
 
-\begin{table}
-\caption{\label{tab:mdl-summary-stats}foo}
-\centering
-\begin{tabular}[t]{llr}
-\toprule
-Model & Statistic & Value\\
-\midrule
-Model 1: Linear model & N & 46956\\
- & R$^2$ & 0.013\\
- & Adj. R$^2$ & 0.013\\
-Model 2: Linear model with IFP random intercepts & N & 46956\\
- & Marginal R$^2$ & 0.011\\
- & Conditional R$^2$ & 0.283\\
-\bottomrule
-\end{tabular}
-\end{table}
+```{r model-summary-stats, result='asis'}
+knitr::opts_current$set(label = "model-summary-stats")
+tbl <- read_csv("../output/tables/model-summary-stats.csv")
+knitr::kable(tbl, digits = 2, format = "latex", booktabs = TRUE, 
+             caption = "Model summary statistics") %>%
+  gsub("R\\\\textasciicircum\\{\\}2", "$R^2$", .) %>%
+  # cut off the integer trailing digits
+  gsub("\\.00", "", .)
+```
 
 ## Models generally were disappointing, but did they do well in certain areas?
 
-This is now only looking at IFPs for which a machine forecast was available. 
+Although the machine models overall underperformed, it is possible that they performed well relative to human forecasters in certain areas. To examine this we looked at all forecasts for questions that had a machine forecast. This leaves us with 15,995 forecasts, approximately 2,000 of which were machine and volunteer forecasts, respectively, and the remaining 12,000 from turkers. 
 
-Put the model based version with stars here instead of this:
+To estimate the relative performance of different forecasters, we again estimated a simple linear model, similar to those used for the turker pariwise comparisons. The model has the general form:
+
+$$
+\begin{aligned}
+\textrm{Brier} =~& \beta_{i}\textrm{DataSource} + \beta'_{ij}(\textrm{DataSource}\times\textrm{Forecaster})
+\end{aligned}
+$$
+
+Data source is a discrete variable with $i=14$ levels for the different data sources reflected in the set of IFPs. Based on previous exploratory analysis, we separated one data source, ACLED questions, by whether a question was binary with two answer options ("yes"/"no"), or not (3 or 5 options). Forecaster is also a discrete variable with 3 levels, but we leave out "Machine" as reference category, giving us $j=2$ different levels. Thus, each of the $\beta$ coefficients corresponds to the average Brier score for machine forecasts for that group of IFPs, and each $\beta'_i$ coefficient is the relative difference of the average volunteer and turker Brier score compared to the corresponding baseline in $\beta_i$. 
+
+\begin{figure}
+\caption{\label{fig:model-machine-by-data-source} Linear model estimates for the relative performance of machine to volunteer and turker forecasts by data source. The left panel shows the baseline machine performance for each data source, the right panel shows the relative difference of the volunteer and turker forecasts to the corresponding baseline. The outcome variable is a forecasts's Brier score.}
+\includegraphics{../output/figures/model-machine-by-data-source.png}
+\end{figure}
+
+Figure \ref{fig:model-machine-by-data-source} shows the coefficient estimates. The left panel shows the baseline machine forecast performance. The right panel shows the relative difference in average Brier scores for turker and volunteer forecasts; points to the left of the dotted 0 line indicate that volunteer or turker forecasters on average outperformed the machine forecasts. 
+
+The machine forecasts did better than human forecasts on ACLED 5-option, Boko Haram killings ("nigeria-security"), and hacking ("privacyrights") questions. All three data sources consist of count data derived from original event datasets, i.e. they require data aggregation before one can see a time series relevant to the question at hand, which might be a factor in the relative performance on these questions. On the other hand, human forecasters consistently did better on ACLED 2-option, food price index ("FAO-FPI"), financial ("fred"), and oil production ("opec") questions. The results for ACLED 2-option questions might be influenced by the particular mechanism by which time series forecasts were converted to answer option probabilities, which may explain the inconsistency with ACLED 5-option questions. 
+
+There are some hard to quantify factors that may explain some of the variation in human to machine performance:
+
+1. As mentioned, some data sources (ACLED, privacyrights, nigeria-security) required relatively complicated data aggregation to derive usable count series, and which therefore may not have been accessible to all human forecasters. 
+2. Not all data sources are equally easy to automatically download and update, and at least in some of the data sources it was the case that models had to forecast over much longer time horizons due to outdated data, while a human forecaster would have been able to access more recent data.
+3. Due to obstacles in data acquisition, in at least one case--OPEC oil production rates--a secondary and less accurate source was substituted. OPEC production values are delivered in monthly PDF reports that are difficult to automatically extract data from, and the alternative data source in some instances significantly deviated from the OPEC values. Thus models for these questions would have been forecasting with incorrect input data. 
+4. For questions in which the data source is at a monthly (or higher) resolution, humans have an advantage over univariate time series models in that they can incorporate sub-monthly information into their forecast. For many of these questions, if they were open for a period of one or two months, there would in fact have only been one or two distinct time series forecasts (barring practical live system issues and bugs).  
+
+A caveat to these trends is that the number of IFPs and forecasts for each data source are small and the results may thus be due to random variation. Results from future RCTs should test this. 
+
+## Why did condition B volunteers do so well?
+
+Condition B volunteers had the best overall performance out of the 16 groups shown in Table \ref{tab:brier-by-forecaster-ifp-group-condition}. Considering that the machine forecasts were relatively bad, one possible explanation is that the charts overall had a positive impact on human forecast accuracy, while seeing machine forecasts had a negative impact. 
+
+However, there are several additional patterns that are either inconsistent with this simple explanation or at least suggest the need for a more complex alternative. The first is that condition B forecasters did not only do better than other groups on questions that had a chart, but also on questions that did not have a chart. Table \ref{tab:b-advantage} shows the relevant rows from the average Brier scores for all forecaster groups in Table \ref{tab:brier-by-forecaster-ifp-group-condition}. With the partial exception of the few chart-only questions, condition B forecasters' advantage on questions without a chart is as pronounced as their advantage in questions that did have a chart. Considering that there were two to three times as many forecasts on questions without chartable data, most of the condition B volunteer advantage is driven by doing better on questions that did not have a chart. 
+
+```{r}
+knitr::opts_current$set(label = "b-advantage")
+tbl <- read_csv("../output/tables/volunteer-brier-by-condition-ifp-group.csv")
+knitr::kable(tbl, digits = 2, format = "latex", booktabs = TRUE, 
+             caption = "Condition B advantage",
+             linesep = c(rep("", 2), '\\addlinespace')) 
+```
+
+We could exlain this if there is, in addition to the direct beneficial effect of seeing a chart, but not a potentially misleading machine forecast, a spillover effect whereby exposure to charts also improves a volunteer forecaster's ability to forecast on other questions without charts. 
+
+Curious inconsistencies remain:
+
+**There appears to be no chart spillover effect for condition C human and volunteer forecasters.** Tabe \ref{tab:brier-by-forecaster-ifp-group-condition} shows that condition C volunteers did worse on questions without time-series data than the condition A control group. Condition C turkers also did not do better than their condition A control group counterparts. Unlike condition B forecasters, they were exposed to machine forecasts as well, so maybe there is an equal but opposite negative machine spillover effect. 
+
+**Condition B volunteers who forecast a lot do no better on non-chart questions than novices.** Figure \ref{fig:cond-b-volunteers-n-vs-brier} show average Brier scores as a function of the total number of forecasts a user has. The data consist of only forecasts from condition B volunteers. Each point is the average Brier score for a user's forecasts on the set of questions that did (blue) or did not have a chart (red). Novice users tend to be as accurate as intensive users on non-chart questions. This implies that the condition B volunteer advantage on non-chart questions is not related to how active a user was. If there is a spillover effect, even very inactive users seem to somehow benefit from it. 
+
+\begin{figure}
+\caption{\label{fig:cond-b-volunteers-n-vs-brier} Average Brier for condition B volunteers by user and by whether a IFP had a chart. Intensive users are slightly more accurate than novice users on questions with a chart, but no more accurate on questions without a chart.}
+\includegraphics{../output/figures/cond-b-volunteers-n-vs-brier.png}
+\end{figure}
+
+**Condition C volunteers do well on questions where we know that data displayed was wrong.** There were several instances where we know that the data displayed in a chart were inaccurate. Figure \ref{fig:iraq} shows the first example, oil production figures for Iraq. The main chart shows several teim series depicting oil production in Iraq, according to different sources. The canonical data are contained in monthly OPEC oil market reports, each of which contains production figures for the past 3 months. Those are shown in the sequence of short time series on the mid-right part of the main chart--the figures are somewhat inconsistent between reports, but this is another peculiarity. Because this data is difficult to obtain programatically, an alternative data source is used instead. This is what would have been shown in the charts, and what informed the machine forecast. Obviously it is incorrect data. The dotted lines show the values separating the answer options for this question. The chart placed the production values in an entirely incorrect answer category. 
+
+\begin{figure}
+\caption{\label{fig:iraq} Iraq oil production}
+\includegraphics{../output/figures/opec-iraq-divergence.png}
+\end{figure}
+
+Curiously, the condition B volunteers performed better on this question than any other forecaster. The number of forecasts here are low, and only the last three groups, starting from the machine forecasts, have pairwise statistically significant differences in average Brier score from the condition B volunteers. 
+
+|Forecaster |condition | avg_Brier|  n|
+|:----------|:---------|---------:|--:|
+|Volunteer  |b         |      0.07|  5|
+|Volunteer  |a         |      0.11|  5|
+|Turker     |c         |      0.18| 87|
+|Machine    |n/a       |      0.25| 14|
+|Turker     |a         |      0.35| 23|
+|Volunteer  |c         |      0.45| 21|
+
+Another example with incorrect data is an early ICEWS question that fell outside the common period and thus did not have forecasts from turkers. Condition B volunteers also outperformed all other groups on this question, although the pairwise differences with the other groups are not statistically significant. 
+
+|Forecaster |condition | avg_Brier|  n|
+|:----------|:---------|---------:|--:|
+|Volunteer  |b         |      0.92| 14|
+|Machine    |n/a       |      1.00| 18|
+|Volunteer  |a         |      1.11|  7|
+|Volunteer  |c         |      1.11| 25|
+
+\clearpage
+
+**Even when the machine predictions were good, condition B volunteers did better than their C counterparts.** If bad machine predictions influence human forecasts and are the reason why the beneficial chart effecgt is only apparent in condition B forecasters, and not condition C forecasters, then it should also be the case that condition C forecasters do well on those questions where the machine forecasts were good. This is no the case. The table below shows the subset of forecasts on questions that had a machine forecast (and thus chart) and where the machine forecast average Brier was lower than the average Brier score for the forecasts from all other forecaster $\times$ condition groups. Condition B volunteers beat their condition C counterparts even when the machine model should have improved their forecasts because they happened to be accurate. 
+
+|Forecaster |Condition          | avg_Brier| n_fcasts|
+|:----------|:------------------|---------:|--------:|
+|Machine    |Machine            |      0.39|     1975|
+|Turker     |A: no chart        |      0.39|     2810|
+|Turker     |C: chart and model |      0.38|     8482|
+|Volunteer  |A: no chart        |      0.28|      267|
+|Volunteer  |B: chart only      |      0.23|      958|
+|Volunteer  |C: chart and model |      0.32|     1094|
+
+One possibility that we should not discard with these apparent inconsistencies is that we are digging in noise. All of the effects---for turkers versus other forecasts, for the disappointing performance of the machine forecasts, for conditions or different groupings of IFPs---pale in comparison to differences in accuracy between individual forecasters and between forecasts for different IFPs. But on the other hand there are several inconsistencies so it also is a stretch to write all of them off to random coincidence. Condition B volunteers clearly did better than all other forecasters/condition groups, but it is not clear why. 
+
+# Conclusion
+
+Are we digging in noise?
+
+Many of the questions involve monthly time series but are only open for periods spanning a single or few months. Some of the advantage of the human forecasters may thus have been due to operating on a sub-monthly time scale. 
+
+We also know that model performance suffered from issues related to automation. Were we able to run the RCT-A questions with the current system and with a data platform that optimally ingests data sources on the bleeding edge of their own updates, our forecasts would have been ...
+
+**[check with updated results from test bed what the performance gain would have been, i think the site visit stats were not accurate anymore]**
+
+# Additional information
 
 |Data_source      | N_IFPs| Machine| Turker| Volunteer|
 |:----------------|------:|-------:|------:|---------:|
@@ -231,42 +336,6 @@ Put the model based version with stars here instead of this:
 |privacyrights    |      2|   0.231|  0.321|     0.517|
 |stocks           |      4|   0.204|  0.204|     0.223|
 
-Models did relatively well with ACLED 5op, IMF, NST, privacyrights. Poorly on ACLED 2op, FAO, FRED, other?.
-
-## Why did condition B volunteers do so well?
-
-Condition B volunteers had the best overall performance out of the 16 groups shown in Table XX. One immediate and plausible story to explain why condition B forecasters did better than both A and C, even after controlling for the impact of Turker forecasters in the other groups, goes like this: we know the machine forecasts were disappointing and less accurate in general. Users who thus saw the chart and machine forecasts were adversely pulled to forecast in line with the machine prediction. On the other than, users who only saw the chart had a good baseline and were able to somehow accurately extrapolate from there. 
-
-There are several inconsistencies in the data with this story. First, condition B forecasters did not only do better than other groups on questions that had data and a chart, but also on questions that did not have a chart.
-
-**evidence here**
-
-Maybe there is a "spillover" effect, where seeing the charts somehow made users just generally better forecasters. 
-
-Do we see this in condition C for questions that didn't have a model? No. Condition C Turkers forecasting on a question without a chart did as poorly as condition A Turkers on the same set of questions (rows 1,2,10,11). Condition C volunteers on questions without a machine forecast did *worse* than both condition B and A volunteers on the same question sets. 
-
-**evidence here**
-
-Another piece of evidence against the spillover effect is that accuracy is actually higher among users who only forecasted a small number of times, which suggests that learning did not take place. 
-
-**evidence here**
-
-Not only were condition B volunteers uncannily accurate on questions even without a chart, they were uncannily accurate on questions where we know the displayed data were wrong. 
-
-**evidence here**
-
-One possibility that we should not discard is that we are digging in noise. All of the effects---for turkers versus other forecasts, for the disappointing performance of the machine forecasts, for conditions or different groupings of IFPs---pale in comparison to differences in accuracy between individual forecasters and between forecasts for different IFPs. 
-
-**maybe this is a good time to talk about the superactive forecasters and see whether excluding them changes results**
-
-# Conclusion
-
-Are we digging in noise?
-
-Many of the questions involve monthly time series but are only open for periods spanning a single or few months. Some of the advantage of the human forecasters may thus have been due to operating on a sub-monthly time scale. 
-
-We also know that model performance suffered from issues related to automation. Were we able to run the RCT-A questions with the current system and with a data platform that optimally ingests data sources on the bleeding edge of their own updates, our forecasts would have been ...
-
-**check with updated results from test bed what the performance gain would have been, i think the site visit stats were not accurate anymore**
+Table: Average Brier scores for machine and other forecasts by question data source. 
 
 # References

@@ -35,7 +35,7 @@ df1 <- machine_fcasts %>%
          sees_chart = NA, sees_model = NA)
 df2 <- user_fcasts %>%
   mutate(Forecaster = ifelse(turker, "Turker", "Volunteer")) %>%
-  select(ifp_id, date, has_historic_data, has_arima, needs_data_agg,
+  select(ifp_id, user_id, date, has_historic_data, has_arima, needs_data_agg,
          num_options, p_correct, brier, Forecaster, condition, sub_condition_1,
          sees_chart, sees_model)
 all_fcasts <- bind_rows(df1, df2) %>%
@@ -104,9 +104,14 @@ brier_by_forecaster_ifp_group_condition <- common_period %>%
   arrange(Condition, Forecaster, IFP_Group) %>%
   mutate(Group = 1:n()) %>%
   select(Group, Condition, Forecaster, IFP_Group, everything()) %>%
-  write_csv("output/tables/brier-by-forecast-ifp-group-condition.csv")
+  write_csv("output/tables/brier-by-forecaster-ifp-group-condition.csv")
 brier_by_forecaster_ifp_group_condition %>%
   knitr::kable(digits = 2)
+
+caption = paste0(
+  create_label('tab:', opts_current$get('label'), latex = (format == 'latex')),
+  caption
+)
 
 # Design table
 brier_by_forecaster_ifp_group_condition %>%
@@ -135,11 +140,14 @@ brier_by_ifp_group
 
 turker_pairs <- common_period %>% 
   filter(condition!="b") %>%
-  mutate(Condition = fct_recode(Condition, `C: chart and model` = "Machine")) %>%
+  mutate(Condition = fct_recode(Condition, `C: chart and model` = "Machine"),
+         Condition = fct_relabel(Condition, ~ paste0("Condition ", .x))) %>%
   mutate(Forecaster = factor(Forecaster, levels = c("Turker", "Volunteer", "Machine"))) %>%
+  mutate(IFP_Group = factor(IFP_Group),
+         IFP_Group = fct_relabel(IFP_Group, ~ paste0("IFP Group: ", .x))) %>%
   unite(Group, Condition, IFP_Group, sep = "\n")
 group_all <- turker_pairs %>%
-  mutate(Group = "All") 
+  mutate(Group = "All conditions and IFPs") 
 turker_pairs <- bind_rows(turker_pairs, group_all) %>%
   group_by(Group) %>%
   nest(Forecaster, brier) %>%
@@ -173,7 +181,9 @@ ggsave("output/figures/pairwise-comparisons-turker.png", height = 4, width = 7)
 
 
 
-common_period_no_machine <- common_period[common_period$Forecaster!="Machine", ]
+common_period_no_machine <- common_period[common_period$Forecaster!="Machine", ] %>%
+  mutate(sees_chart = as.integer(sees_chart), 
+         sees_model = as.integer(sees_model))
 
 # % who saw a chart
 table(common_period_no_machine$sees_chart) / nrow(common_period_no_machine) * 100
@@ -184,6 +194,14 @@ mdl1 <- lm(brier ~ Forecaster + IFP_Group + sees_chart + sees_model,
            data = common_period_no_machine)
 mdl2 <- lmer(brier ~ Forecaster + IFP_Group + sees_chart + sees_model + (1|ifp_id),
              data = common_period_no_machine)
+
+sink("output/tables/mdl1-summary.txt")
+summary(mdl1) 
+sink()
+
+sink("output/tables/mdl2-summary.txt")
+summary(mdl2) 
+sink()
 
 bind_rows(
   tidy(mdl1) %>% mutate(Model = "Model 1: linear model"),
@@ -212,9 +230,7 @@ mdl_summary_stats <- tibble(
 
 write_csv(mdl_summary_stats, "output/tables/model-summary-stats.csv")
 
-mdl_summary_stats %>%
-  knitr::kable(format = "latex", digits = 3,
-               caption = "foo", booktabs = TRUE)
+mdl_summary_stats 
 
 
 
@@ -267,39 +283,179 @@ brier_arima_qs_only_by_data_source_forecaster %>%
   write_csv("output/tables/brier-arima-qs-only-by-data-source-forecaster-wide.csv") %>%
   knitr::kable(digits = 3)
 
-summary(lm(brier ~ -1 + data_source*Forecaster, data = arima_qs ))
 
+mdl3 <- lm(brier ~ -1 + Data_source + Data_source:Forecaster, data = arima_qs )
 
-summary(lm(brier ~ -1 + data_source*Forecaster*(num_options==2), data = arima_qs ))
+mdl3_coefs <- tidy(mdl3) %>%
+  separate(term, sep = ":", into = c("Data source", "Forecaster"), fill = "right") %>%
+  replace_na(list(Forecaster = "Machine (reference)")) %>%
+  mutate(Forecaster = gsub("Forecaster", "", Forecaster),
+         `Data source` = gsub("Data_source", "", `Data source`)) %>%
+  mutate(`Data source` = factor(`Data source`))
 
+mdl3_coefs %>%
+  mutate(facet = ifelse(Forecaster=="Machine (reference)", "Baseline", "Relative difference")) %>%
+  ggplot(., aes(x = `Data source`, color = Forecaster)) +
+  geom_pointrange(aes(y = estimate, ymin = estimate - 1.96*std.error, ymax = estimate + 1.96*std.error),
+                  position = position_dodge(width = 0.2), alpha = .8) +
+  facet_wrap(~ facet, scales = "free_x") +
+  coord_flip() +
+  geom_hline(data = data.frame(facet = "Relative difference", y = 0), 
+             aes(yintercept = 0), linetype = 3) +
+  scale_x_discrete(limits = rev(levels(mdl3_coefs$`Data source`))) +
+  theme_minimal() +
+  labs(y = "Coefficient estimate", x = "Data source") +
+  theme(legend.position = "top") +
+  scale_color_discrete("Forecaster:")
+ggsave("output/figures/model-machine-by-data-source.png", height = 7, width = 7)
+
+mdl3_coefs %>%
+  mutate(facet = ifelse(Forecaster=="Machine (reference)", "Baseline", "Relative difference")) %>%
+  ggplot(., aes(x = `Data source`, color = Forecaster)) +
+  geom_pointrange(aes(y = estimate, ymin = estimate - 1.96*std.error, ymax = estimate + 1.96*std.error),
+                  position = position_dodge(width = 0.2), alpha = .8) +
+  facet_wrap(~ facet, scales = "free_x") +
+  coord_flip() +
+  theme_ipsum_rc() +
+  geom_hline(yintercept = 0, linetype = 3)
 
 
 # Condition B deep dive ---------------------------------------------------
 
 # B did better on non-data questions
+volunteer_brier_by_condition_ifp_group <- brier_by_forecaster_ifp_group_condition %>% 
+  filter(Forecaster=="Volunteer") %>%
+  select(-Forecaster) %>%
+  mutate(Condition = factor(Condition) %>% fct_relevel(., "B: chart only")) %>%
+  arrange(IFP_Group, Condition) %>%
+  write_csv("output/tables/volunteer-brier-by-condition-ifp-group.csv")
 
+# Spillover effect?
 
+# Look at forecast quality by number of times someone forecasted
+cond_b_volunteers_n_vs_brier <- common_period %>%
+  filter(Forecaster=="Volunteer" & Condition=="B: chart only") %>%
+  group_by(user_id) %>%
+  mutate(n_fcasts = n(), IFP_had_chart = !IFP_Group=="No TS data") %>%
+  group_by(user_id, IFP_had_chart) %>%
+  summarize(n_fcasts = unique(n_fcasts), avg_Brier = mean(brier))
 
-# B did better even on questions where we know the data were wrong
+ggplot(cond_b_volunteers_n_vs_brier, aes(x = n_fcasts, y = avg_Brier, color = IFP_had_chart)) +
+  geom_point() + 
+  scale_x_log10() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_ipsum_rc() +
+  labs(x = "Total number of forecasts by user")
+ggsave("output/figures/cond-b-volunteers-n-vs-brier.png", height = 5, width = 8)
 
+# neither slope seems to be significant
+summary(lm(avg_Brier ~ n_fcasts*IFP_had_chart, data = cond_b_volunteers_n_vs_brier))
+
+# Do people who only forecasted a small number of times still do better than 
+# users in other groups?
+common_period %>%
+  filter(!Forecaster %in% c("Turker", "Machine")) %>%
+  group_by(user_id) %>%
+  mutate(n_fcasts = n()) %>%
+  filter(n_fcasts < 50) %>%
+  group_by(Forecaster, Condition) %>%
+  summarize(users = length(unique(user_id)),
+            avg_Brier = mean(brier))
+
+# User 1354 was B volunteer with the most forecasts, did he she get better over time?
+u1354 <- common_period %>%
+  filter(user_id==1354) %>%
+  mutate(IFP_had_chart = !IFP_Group=="No TS data")
+ggplot(u1354, aes(x = date, y = brier, color = IFP_had_chart)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+# Overall highest forecasts; this person was in C
+u911 <- common_period %>%
+  filter(user_id==911) %>%
+  mutate(IFP_had_chart = !IFP_Group=="No TS data")
+ggplot(u911, aes(x = date, y = brier, color = IFP_Group)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+# look at stats when you take out superheavy users
+fcasts_by_user <- common_period %>%
+  group_by(user_id) %>%
+  summarize(n_fcasts = n()) %>%
+  ungroup()
+
+# Do small time users who enter the competition later do as well as those who
+# were active earlier? I'm trying to get at whether questions became easier
+# over time or forecasters got better
+common_period %>%
+  filter(!Forecaster %in% c("Turker", "Machine")) %>%
+  group_by(user_id) %>%
+  mutate(n_fcasts = n()) %>%
+  ungroup() %>%
+  filter(n_fcasts < 5) -> foo
+ggplot(foo, aes(x = date, y = brier)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+# Seems that it really is that forecasters got better over time
 
 # 1892 Oil production in Iraq in June 2018
 # This is the question we used at the site visit to illustrate bad data. 
 # The B volunteers again did very well
 # C volunteers did worse than machine, but turker C did more like machine.
-f1892 <- filter(all_fcasts, ifp_id==1892)
-table(f1892$Forecaster, f1892$condition)
-f1892 %>% 
+f1892 <- filter(common_period, ifp_id==1892) %>%
+  mutate(Group = paste0(Forecaster, ", ", condition),
+         Group = factor(Group) %>% fct_relevel("Volunteer, b"))
+summary(lm(brier ~ Group, data = f1892))
+tbl1892 <- f1892 %>%
   group_by(Forecaster, condition) %>%
-  summarize(avg_Brier = mean(brier), n = n())
+  summarize(avg_Brier = mean(brier), n = n()) %>%
+  arrange(avg_Brier)
+tbl1892
 
 # 911 ICEWS Palestine
 # the ICEWS data were badly aggregated
-f911 <- filter(all_fcasts, ifp_id==911)
-table(f911$Forecaster, f911$condition)
-f911 %>% 
+f911 <- filter(all_fcasts, ifp_id==911) %>%
+  mutate(Group = paste0(Forecaster, ", ", condition),
+         Group = factor(Group) %>% fct_relevel("Volunteer, b"))
+summary(lm(brier ~ Group, data = f911))
+tbl911 <- f911 %>%
   group_by(Forecaster, condition) %>%
-  summarize(avg_Brier = mean(brier), n = n())
+  summarize(avg_Brier = mean(brier), n = n()) %>%
+  arrange(avg_Brier)
+tbl911
+
+# When the machine models did well, did condition C also do better, relative 
+# to B?
+good_machine <- common_period %>%
+  filter(Forecaster %in% c("Machine", "Volunteer")) %>%
+  group_by(ifp_id, Forecaster, Condition) %>%
+  summarize(avg_Brier = mean(brier), n_fcasts = n()) %>%
+  group_by(ifp_id) %>%
+  mutate(avg_Brier_for_ifp = weighted.mean(avg_Brier, n_fcasts),
+         machine_improvement = (avg_Brier - avg_Brier_for_ifp)/avg_Brier_for_ifp,
+         min_avg_Brier = min(avg_Brier)) %>%
+  filter(Forecaster=="Machine") %>%
+  filter(avg_Brier==min(avg_Brier)) %>%
+  ungroup() %>%
+  arrange(machine_improvement) 
+  
+fcasts_good_machine <- common_period %>%
+  filter(ifp_id %in% good_machine$ifp_id) 
+fcasts_good_machine %>%
+  group_by(Forecaster, Condition) %>% 
+  summarize(avg_Brier = mean(brier), n_fcasts = n()) %>%
+  knitr::kable(digits = 2)
+
+ggplot(fcasts_good_machine, aes(x = interaction(Forecaster, Condition), y = brier)) + 
+  geom_boxplot()
+# need to check this more, but it seems that when the model was pretty good 
+# actually, turkers who saw the model tended to do better than turkers who 
+# were in a; while volunteers who saw the model still tended to do worse than
+# volunteers who saw only the chart
+
+
+
+## older stuff, organize
 
 # activity by question
 fcasts_by_ifp <- all_fcasts %>%
@@ -350,10 +506,6 @@ f1892 %>%
   group_by(Forecaster, condition) %>%
   summarize(avg_Brier = mean(brier), n = n())
 
-# Look at groupings by question type
-common_period %>%
-  group_by(num_options, Forecaster, condition) %>%
-  summarize(avg_Brier = mean(brier), n = n())
 
 # Look at groupings by data source
 by_source <- common_period %>%
@@ -461,51 +613,19 @@ fcasts %>%
 # System persistently kept showing wrong chart, with ACLED riots/protests
 # B volunteers have lower Brier on this, why?
 # C turkers as expected had worse score than A turkers
-f1003 <- filter(fcasts, ifp_id==1003)
-table(f1003$turker)
-table(f1003$condition)
-f1003 %>% 
-  group_by(turker, condition) %>%
-  summarize(avg_brier = mean(brier), n = n())
-
-# 1892 Oil production in Iraq in June 2018
-# This is the question we used at the site visit to illustrate bad data. 
-# The B volunteers again did very well
-# C volunteers did worse than machine, but turker C did more like machine.
-f1892 <- filter(fcasts, ifp_id==1892)
-table(f1892$turker)
-table(f1892$condition)
-f1892 %>% 
-  group_by(turker, condition) %>%
-  summarize(avg_brier = mean(brier), n = n())
-filter(machine_fcasts, ifp_id==1892) %>%
-  summarize(avg_brier = mean(brier), n = n())
-
-# 911 ICEWS Palestine
-# the ICEWS data were badly aggregated
-f911 <- filter(fcasts, ifp_id==911)
-table(f911$turker)
-table(f911$condition)
-f911 %>% 
-  group_by(turker, condition) %>%
-  summarize(avg_brier = mean(brier), n = n())
-filter(machine_fcasts, ifp_id==911) %>%
-  summarize(avg_brier = mean(brier), n = n())
-
-# 902 ICEWS Palestine
-# seems to not be in data
+f1003 <- filter(common_period, ifp_id==1003) %>%
+  mutate(Group = paste0(Forecaster, ", ", condition),
+         Group = factor(Group) %>% fct_relevel("Volunteer, b"))
+summary(lm(brier ~ Group, data = f1003))
+tbl1003 <- f1003 %>%
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n()) %>%
+  arrange(avg_Brier)
+tbl1003
 
 
-# 866
-# the ICEWS data were badly aggregated
-f866 <- filter(fcasts, ifp_id==866)
-table(f911$turker)
-table(f911$condition)
-f911 %>% 
-  group_by(turker, condition) %>%
-  summarize(avg_brier = mean(brier), n = n())
-filter(machine_fcasts, ifp_id==911) %>%
-  summarize(avg_brier = mean(brier), n = n())
+
+
 
 # Conditions --------------------------------------------------------------
 

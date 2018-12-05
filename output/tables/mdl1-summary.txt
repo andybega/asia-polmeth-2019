@@ -1,0 +1,24 @@
+
+Call:
+lm(formula = brier ~ Forecaster + IFP_Group + sees_chart + sees_model, 
+    data = common_period_no_machine)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-0.5895 -0.3428 -0.1912  0.2027  1.7586 
+
+Coefficients:
+                          Estimate Std. Error t value Pr(>|t|)    
+(Intercept)               0.447126   0.002887 154.862  < 2e-16 ***
+ForecasterVolunteer      -0.104321   0.006208 -16.805  < 2e-16 ***
+IFP_GroupChart only       0.142377   0.017834   7.984 1.45e-15 ***
+IFP_GroupChart and model -0.063318   0.008648  -7.322 2.48e-13 ***
+sees_chart               -0.038067   0.015751  -2.417   0.0157 *  
+sees_model                0.042337   0.015251   2.776   0.0055 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.4776 on 46950 degrees of freedom
+Multiple R-squared:  0.01339,	Adjusted R-squared:  0.01328 
+F-statistic: 127.4 on 5 and 46950 DF,  p-value: < 2.2e-16
+
