@@ -205,7 +205,7 @@ sink()
 
 bind_rows(
   tidy(mdl1) %>% mutate(Model = "Model 1: linear model"),
-  tidy(mdl2) %>% mutate(Model = "Model 2: linear model with IFP random intercepts") %>%
+  tidy(mdl2) %>% mutate(Model = "Model 2: linear model with IFP random\nintercepts") %>%
     filter(group=="fixed")
 ) %>%
   mutate(term = factor(term) %>% fct_recode(`Baseline\nForecasterTurker, IFP_GroupNo_TS_data` = "(Intercept)")) %>%
@@ -346,7 +346,7 @@ ggplot(cond_b_volunteers_n_vs_brier, aes(x = n_fcasts, y = avg_Brier, color = IF
   geom_smooth(method = "lm", se = FALSE) +
   theme_ipsum_rc() +
   labs(x = "Total number of forecasts by user")
-ggsave("output/figures/cond-b-volunteers-n-vs-brier.png", height = 5, width = 8)
+ggsave("output/figures/cond-b-volunteers-n-vs-brier.png", height = 4, width = 8)
 
 # neither slope seems to be significant
 summary(lm(avg_Brier ~ n_fcasts*IFP_had_chart, data = cond_b_volunteers_n_vs_brier))
@@ -427,23 +427,44 @@ tbl911
 # When the machine models did well, did condition C also do better, relative 
 # to B?
 good_machine <- common_period %>%
-  filter(Forecaster %in% c("Machine", "Volunteer")) %>%
+  # Get average for each group on each IFP
   group_by(ifp_id, Forecaster, Condition) %>%
   summarize(avg_Brier = mean(brier), n_fcasts = n()) %>%
   group_by(ifp_id) %>%
-  mutate(avg_Brier_for_ifp = weighted.mean(avg_Brier, n_fcasts),
-         machine_improvement = (avg_Brier - avg_Brier_for_ifp)/avg_Brier_for_ifp,
-         min_avg_Brier = min(avg_Brier)) %>%
+  # Don't do a weighted avg for Brier. We want an estimate of the performance
+  # of a group on an IFP, i.e. group average and the average of that
+  mutate(avg_Brier_for_ifp = mean(avg_Brier),
+         rel_performance = (avg_Brier - avg_Brier_for_ifp)/avg_Brier_for_ifp,
+         min_avg_Brier = min(avg_Brier),
+         n_groups = n()) %>%
+  # Make sure we had forecasts from all groups
+  filter(n_groups==6) %>%
+  # Look only at Machine and select if they had the best avg
   filter(Forecaster=="Machine") %>%
-  filter(avg_Brier==min(avg_Brier)) %>%
+  filter(avg_Brier==min_avg_Brier) %>%
   ungroup() %>%
-  arrange(machine_improvement) 
-  
+  arrange(rel_performance) 
+
 fcasts_good_machine <- common_period %>%
-  filter(ifp_id %in% good_machine$ifp_id) 
+  filter(ifp_id %in% good_machine$ifp_id) %>%
+  # Keep track of unique users for each group
+  group_by(Forecaster, Condition) %>%
+  mutate(N_users = length(unique(user_id))) %>%
+  # Get average for each group on each IFP
+  group_by(ifp_id, Forecaster, Condition) %>%
+  summarize(avg_Brier = mean(brier), N_fcasts = n(), N_users = unique(N_users)) %>%
+  group_by(ifp_id) %>%
+  # Don't do a weighted avg for Brier. We want an estimate of the performance
+  # of a group on an IFP, i.e. group average and the average of that
+  mutate(avg_Brier_for_ifp = mean(avg_Brier),
+         rel_performance = (avg_Brier - avg_Brier_for_ifp)/avg_Brier_for_ifp,
+         min_avg_Brier = min(avg_Brier),
+         N_groups = n())
+
 fcasts_good_machine %>%
   group_by(Forecaster, Condition) %>% 
-  summarize(avg_Brier = mean(brier), n_fcasts = n()) %>%
+  summarize(avg_rel_Brier = mean(rel_performance),
+            N_users = unique(N_users), N_fcasts = sum(N_fcasts)) %>%
   knitr::kable(digits = 2)
 
 ggplot(fcasts_good_machine, aes(x = interaction(Forecaster, Condition), y = brier)) + 
