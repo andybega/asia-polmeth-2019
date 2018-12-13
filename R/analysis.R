@@ -426,6 +426,20 @@ tbl911 <- f911 %>%
   arrange(avg_Brier)
 tbl911
 
+# 1003 Loya Jirga
+# System persistently kept showing wrong chart, with ACLED riots/protests
+# B volunteers have lower Brier on this, why?
+# C turkers as expected had worse score than A turkers
+f1003 <- filter(common_period, ifp_id==1003) %>%
+  mutate(Group = paste0(Forecaster, ", ", condition),
+         Group = factor(Group) %>% fct_relevel("Volunteer, b"))
+summary(lm(brier ~ Group, data = f1003))
+tbl1003 <- f1003 %>%
+  group_by(Forecaster, condition) %>%
+  summarize(avg_Brier = mean(brier), n = n()) %>%
+  arrange(avg_Brier)
+tbl1003
+
 # When the machine models did well, did condition C also do better, relative 
 # to B?
 good_machine <- common_period %>%
@@ -549,19 +563,7 @@ foo %>%
 
 # Specific questions ------------------------------------------------------
 
-# 1003 Loya Jirga
-# System persistently kept showing wrong chart, with ACLED riots/protests
-# B volunteers have lower Brier on this, why?
-# C turkers as expected had worse score than A turkers
-f1003 <- filter(common_period, ifp_id==1003) %>%
-  mutate(Group = paste0(Forecaster, ", ", condition),
-         Group = factor(Group) %>% fct_relevel("Volunteer, b"))
-summary(lm(brier ~ Group, data = f1003))
-tbl1003 <- f1003 %>%
-  group_by(Forecaster, condition) %>%
-  summarize(avg_Brier = mean(brier), n = n()) %>%
-  arrange(avg_Brier)
-tbl1003
+
 
 # activity by question
 fcasts_by_ifp <- all_fcasts %>%
