@@ -1,8 +1,12 @@
 ---
-title: "draft slides"
+title: Assessing Amazon Turker and automated machine forecasts in the Hybrid Forecasting Competition
 author: "Andreas Beger, Predictive Heuristics"
 date: "`r format(Sys.Date(), '%e %b %Y')`"
-output: xaringan::moon_reader
+output: 
+  xaringan::moon_reader:
+    chakra: libs/remark-latest.min.js
+    nature:
+      beforeInit: "macros.js"
 ---
 
 ```{r setup, include=FALSE}
@@ -11,9 +15,25 @@ knitr::opts_chunk$set(echo = FALSE)
 
 <!-- https://apreshill.github.io/data-vis-labs-2018/slides/06-slides_xaringan.html#13 -->
 
-# First slide
+class: middle
+
+# Disclaimer
+
+This research is based upon work supported in part by the Office of the Director of National Intelligence (ODNI), Intelligence Advanced Research Projects Activity (IARPA), via 2017-17071900005. The views and conclusions contained herein are those of the authors and should not be interpreted as necessarily representing the official policies, either expressed or implied, of ODNI, IARPA, or the U.S. Government. The U.S. Government is authorized to reproduce and distribute reprints for governmental purposes notwithstanding any copyright annotation therein.
 
 
 ---
+class: center, middle, inverse
 
-# Second slides
+# Hybrid Forecasting Competition (HFC)
+
+
+---
+class: center, middle
+
+![:scale 70%](img/model-machine-by-data-source.png)
+
+
+
+
+
