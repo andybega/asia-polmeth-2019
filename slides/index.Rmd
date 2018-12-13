@@ -1,6 +1,6 @@
 ---
 title: Assessing Amazon Turker and automated machine forecasts in the Hybrid Forecasting Competition
-author: "Andreas Beger, Predictive Heuristics"
+author: "Predictive Heuristics </br>Andreas Beger and Michael D. Ward"
 date: "`r format(Sys.Date(), '%e %b %Y')`"
 output: 
   xaringan::moon_reader:
@@ -18,29 +18,47 @@ library(icon)
 
 <!-- https://apreshill.github.io/data-vis-labs-2018/slides/06-slides_xaringan.html#13 -->
 
-class: middle
+class: center
+
+# Preview
+
+.left.large[I'm going to show results of an exploratory analysis of the relative accuracy of volunteer, Amazon Mechanical Turker, and automated machine forecasts for a broad set of questions (IFPs)<sup>1</sup> in the HFC<sup>2</sup> during the first trial period (RCT-A<sup>3</sup>) that took place this year.]
+
+.left.footnote[<sup>1</sup> Individual Forecasting Problem...I may not be able to keep myself from using HFC jargon. </br>
+<sup>2 </sup> Hybrid Forecasting Competition </br>
+<sup>3 </sup> Randomized controlled trial A]
+
+
+---
+class: middle, center
 
 # Disclaimer
 
-This research is based upon work supported in part by the Office of the Director of National Intelligence (ODNI), Intelligence Advanced Research Projects Activity (IARPA), via 2017-17071900005. The views and conclusions contained herein are those of the authors and should not be interpreted as necessarily representing the official policies, either expressed or implied, of ODNI, IARPA, or the U.S. Government. The U.S. Government is authorized to reproduce and distribute reprints for governmental purposes notwithstanding any copyright annotation therein.
+.left[This research is based upon work supported in part by the Office of the Director of National Intelligence (ODNI), Intelligence Advanced Research Projects Activity (IARPA), via 2017-17071900005. The views and conclusions contained herein are those of the authors and should not be interpreted as necessarily representing the official policies, either expressed or implied, of ODNI, IARPA, or the U.S. Government. The U.S. Government is authorized to reproduce and distribute reprints for governmental purposes notwithstanding any copyright annotation therein.]
 
 
 ---
 class: center, middle, inverse
 
-# Hybrid Forecasting Competition (HFC)
+# Hybrid Forecasting Competition
+
+.pull-left[![](img/hfc-logo.png)]
+
+.pull-right[![](img/sage-logo.png)]
 
 ---
 
 # Project goal
 
->The HFC program is developing and testing hybrid geopolitical forecasting systems. These systems integrate human and machine forecasting components to create maximally accurate, flexible, and scalable forecasting capabilities.
->
->Human-generated forecasts may be subject to cognitive biases and/or scalability limits. Machine-generated (i.e., statistical, computational) forecasting approaches may be more scalable and data-driven, but are often ill-suited to render forecasts for idiosyncratic or newly emerging geopolitical issues. Hybrid approaches hold promise for combining the strengths of these two approaches while mitigating their individual weaknesses.
->
->Performers are developing systems that integrate human and machine forecasting contributions in novel ways. These systems are competing in a multi-year competition to identify approaches that may enable the Intelligence Community (IC) to radically improve the accuracy and timeliness of geopolitical forecasts.
+>The HFC program is developing and testing hybrid geopolitical forecasting systems. These systems **integrate human and machine forecasting components** to create maximally accurate, flexible, and scalable forecasting capabilities.
 
-.small[From https://www.hybridforecasting.com]
+.right.small[From https://www.hybridforecasting.com]
+
+The idea is to overcome some of the respective weaknesses of human and machine-generated forecasts by combining them in some to be determined fashion.
+
+Human-generated forecasts are flexible, but subject to cognitive biases and scalability issues.
+
+Machine-generated forecasts are reliable and scalable, but ill-suited for idiosyncratic or emerging issues.
 
 
 ---
@@ -88,8 +106,38 @@ class: center, middle, inverse
 
 # How this works
 
-- dig
+- An automated system is collection and updating data from several data sources
+- An automated system identifies if data for a particular question is available
 
+If so:
+
+- Chart the data
+- An automated system generates a machine forecast
+
+
+---
+
+# basil-ts
+
+Automated time series forecaster microservice
+
+Implemented in R + Python Flask + RESTful API
+
+Sketch of the internals: 
+
+1. Parse incoming question and data
+2. Produce a time series forecast using an automated ARIMA fitter<sup>1</sup>
+3. Convert the time series forecast to answer option probabilities
+
+Most of the complexity is related to automating the question/task parsing and handling edge cases.
+
+.footnote[<sup>1</sup> [Hyndman & Khandakar 2008](http://www.jstatsoft.org/article/view/v027i03); R [forecast](https://cran.r-project.org/package=forecast) package]
+
+
+---
+class: middle, center, inverse
+
+# Let's start looking at data and results
 
 ---
 
@@ -119,8 +167,20 @@ Relative performance: where did the machine forecasts do better than human forec
 
 ---
 
-Two models
+# Model overview
 
+Group questions by data source, N=14 groups
+
+Compare average Brier scores of volunteer, turker, and machine forecasts (reference category)
+
+$$\textrm{Brier}_{ij} = \beta_{i}\textrm{DataSource}_i + \beta'_{ij}(\textrm{DataSource}_i\times\textrm{Forecaster}_j)$$
+
+$\beta_i$ = average Brier score for machine forecasts for question group $i$
+
+$\beta'_{ij}$ = average Brier score *relative to machine forecasts* for forecaster group $j$ in question group $i$
+
+- Negative values $\rightarrow$ human forecasters did better
+- Positive values $\rightarrow$ machine forecasts did better
 
 ---
 class: center, middle
@@ -145,6 +205,8 @@ class: center, middle
 
 ---
 
+# Conclusions
+
 Machine forecasts did well on count questions that require data aggregation 
 
 Some of the overall hardest questions, and where to some extent human forecasters did better, are economic/financial monthly series 
@@ -159,6 +221,7 @@ class: center, middle, inverse
 # Thank you!
 
 Register to forecast at: 
+
 Internal platform: 
 
 .left[
