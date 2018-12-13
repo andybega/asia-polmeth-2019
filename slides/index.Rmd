@@ -166,9 +166,7 @@ Internal platform:
 
 `r icon::fa("github-square")`: https://github.com/andybega/asia-polmeth-2019
 
-`r icon::fa("file")`: [link to paper (on github under docs/)](https://github.com/andybega/asia-polmeth-2019/blob/master/docs/BegerWard_HFC_AsiaPolmeth2019.pdf)
-
-`r icon::fa("slideshare")`: [slide source](https://github.com/andybega/asia-polmeth-2019/tree/master/slides)
+`r icon::fa("file")`: [link to paper (on github under docs/pdf/)](pdf/BegerWard_HFC_AsiaPolmeth2019.pdf)
 ]
 
 
