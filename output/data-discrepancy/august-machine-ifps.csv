@@ -1,0 +1,17 @@
+ifp_id,start_date,end_date,title,has_historic_data,has_arima,num_options,n_possible_forecasts,n_forecasts_in_mach_dump
+2535,2018-08-29,2018-09-04,What will be the daily closing price of Japan's Nikkei 225 index on 5 September 2018?,TRUE,TRUE,5,10,5
+2459,2018-08-08,2018-08-28,What will be the daily closing price of gold on 29 August 2018 in USD?,TRUE,TRUE,5,31,0
+2432,2018-08-01,2018-08-31,Will ACLED record any civilian fatalities in Iran in August 2018?,TRUE,TRUE,2,37,0
+2526,2018-08-29,2018-09-04,What will be the daily closing price of gold on 5 September 2018 in USD?,TRUE,TRUE,5,10,5
+2288,2018-06-27,2018-08-31,How many battle deaths will ACLED record in South Sudan in August 2018?,TRUE,TRUE,5,37,28
+2441,2018-08-01,2018-08-15,"What will be the daily closing spot price of Brent crude oil (USD per barrel) on 16 August 2018, according to the U.S. EIA?",TRUE,TRUE,5,37,0
+2387,2018-07-18,2018-08-31,Will ACLED record any civilian fatalities in Burkina Faso in August 2018?,TRUE,TRUE,2,37,0
+2423,2018-07-25,2018-08-28,What will be the daily closing price of the EURO STOXX 50 Index (SX5E) on 29 August 2018?,TRUE,TRUE,5,37,0
+2405,2018-07-18,2018-08-30,What will be the daily closing price of France's CAC 40 index (INDEXEURO: PX1) on 31 August 2018?,TRUE,TRUE,5,37,0
+2414,2018-07-25,2018-08-31,What will be the FAO Cereal Price Index in August 2018?,TRUE,TRUE,5,37,0
+2450,2018-08-01,2018-09-05,"What will be the daily closing spot price of Brent crude oil (USD per barrel) on 6 September 2018, according to the U.S. EIA?",TRUE,TRUE,5,37,6
+2243,2018-06-20,2018-08-21,What will be the daily closing price of the United Kingdom's FTSE 100 Index (INDEXFTSE: UKX) on 22 August 2018?,TRUE,TRUE,5,37,18
+1271,2018-03-28,2018-08-22,How many United Nations Security Council Resolutions concerning Syria will be vetoed by Russia between 22 April 2018 and 22 August 2018?,TRUE,TRUE,3,37,19
+2396,2018-07-18,2018-08-31,Will ACLED record any riot/protest events in Egypt in August 2018?,TRUE,TRUE,2,37,0
+2360,2018-07-11,2018-08-31,How many battle deaths will ACLED record in Ethiopia in August 2018?,TRUE,TRUE,5,37,28
+2117,2018-06-06,2018-08-31,How many battle deaths will ACLED record in Central African Republic in August 2018?,TRUE,TRUE,5,37,28

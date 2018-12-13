@@ -115,6 +115,12 @@ machine_fcasts %>%
   summarize(avg_brier = mean(brier))
 
 
+# Discrepancy between source files ----------------------------------------
+#
+#   The aggregation dump and machine forecast dump files don't match,
+#   it seems that both are incomplete.
+#
+
 fcast_dump <- read_csv(
   file.path(in_dir, "dump_machine_forecasts_11_29_2018_20_17_42.csv")
 ) %>%
@@ -151,3 +157,63 @@ check2 <- check %>%
 filter(check2, !ifp_id %in% fcast_dump$ifp_id)
 # both agg and m dump sometimes seem to be missing stuff, weird
 
+
+md_by_day <- fcast_dump %>%
+  group_by(date) %>%
+  summarize(n_forecasts = n()) %>%
+  complete(date = seq(min(date), max(date), by = "day"), 
+           fill = list(n_forecasts = 0)) %>%
+  mutate(source = "machine dump")
+
+agg_by_day <- machine_fcasts %>%
+  group_by(date) %>%
+  summarize(n_forecasts = n()) %>%
+  complete(date = seq(min(date), max(date), by = "day"), 
+           fill = list(n_forecasts = 0)) %>%
+  mutate(source = "agg dump") 
+
+by_day <- bind_rows(md_by_day, agg_by_day) 
+
+ggplot(by_day, aes(x = date, y = n_forecasts, color = source)) +
+  geom_line() +
+  geom_vline(xintercept = as.Date(c("2018-04-13", "2018-08-01")), linetype = 3) +
+  annotate("text", x = as.Date(c("2018-04-13", "2018-08-01")) + 2, y = 26,
+           label = c("2018-04-13\nFirst forecast in aggregation dump", 
+                     "2018-08-01\nLast forecast in aggregation dump"), hjust = 0) +
+  theme_ipsum_ps()
+
+# How many IFPs with ARIMA were there after August 1st?
+
+ifp_have <- fcast_dump %>%
+  filter(date > "2018-08-01") 
+question_dump <- "dump_questions_11_29_2018_20_17_01.csv"
+q_dump <- read_csv(
+  file.path(in_dir, question_dump),
+  col_types = cols(
+    .default = col_character(),
+    ifp_id = col_integer(),
+    discover_id = col_integer(),
+    start_date = col_datetime(format = ""),
+    end_date = col_datetime(format = ""),
+    resolved_date = col_datetime(format = ""),
+    voided_date = col_datetime(format = ""),
+    num_options = col_integer()
+  )
+) %>%
+  mutate_at(vars(contains("date")), as.Date) %>%
+  mutate_at(vars(starts_with("has"), starts_with("is")), ~.x=="True")
+# This is now list of all open IFPs after August 1st, with count of possible
+# and actual machine forecasts
+want_ifps <- q_dump %>%
+  filter(end_date > "2018-08-01" & end_date < "2018-09-10") %>%
+  select(ifp_id, start_date, end_date, title, has_historic_data, has_arima,
+         num_options) %>%
+  mutate(n_possible_forecasts = as.integer(as.Date("2018-09-07") - pmax(start_date, as.Date("2018-08-02"))) + 1) %>%
+  rowwise() %>%
+  mutate(n_forecasts_in_mach_dump = sum(ifp_have$ifp_id %in% ifp_id)) %>%
+  ungroup()
+
+# Pull out machine IFPs
+machine_ifps <- want_ifps %>%
+  filter(has_arima)
+write_csv(machine_ifps, "~/Desktop/august-machine-ifps.csv")
