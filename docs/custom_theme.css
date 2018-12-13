@@ -1,0 +1,13 @@
+/* Adapted from https://github.com/sinarueeger/20181004-geneve-rug */
+
+@import url(https://fonts.googleapis.com/css?family=Arvo);
+@import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+@import url(https://fonts.googleapis.com/css?family=Karla);
+@import url(https://fonts.googleapis.com/css?family=OpenSans);
+@import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+
+.big { font-size: 730% }
+.large { font-size: 130% }
+.small { font-size: 70% }
+.tiny { font-size: 40% }
