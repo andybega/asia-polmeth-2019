@@ -4,8 +4,12 @@
 
 library("tidyverse")
 library("cowplot")
+library("lubridate")
+library("forecast")
 
 df <- read_csv("input-data/iraq-oil-production.csv")
+
+cutpoints <- c(4280, 4384, 4473, 4576)
 
 p1 <- df %>%
   filter(date >= as.Date("2018-06-01") %m-% months(120)) %>%
@@ -35,26 +39,40 @@ ggdraw() +
 ggsave(file = "output/figures/opec-iraq-divergence.png", height = 5, width = 8)
 
 
-plot.mpg <- ggplot(mpg, aes(x = cty, y = hwy, colour = factor(cyl))) + 
-  geom_point(size=2.5) + theme_cowplot()
-plot.mpg
-plot.diamonds <- ggplot(diamonds, aes(clarity, fill = cut)) + geom_bar() +
-  theme_cowplot() + theme(axis.text.x = element_text(angle=70, vjust=0.5, hjust = 0.9))
-plot.diamonds
+# 
+#   Example of chart and chart + forecast for slides
+#   ____________________________
 
-ggdraw() +
-  draw_plot(
-    plot.diamonds + theme(legend.justification = "bottom"),
-    0, 0, 1, 1
-  ) +
-  draw_plot(
-    plot.mpg + scale_color_viridis_d() + 
-      theme(legend.justification = "top", plot.background = element_rect(fill = "white")),
-    0.5, 0.54, 0.5, 0.4
-  ) +
-  draw_plot_label(
-    c("A", "B"),
-    c(0, 0.5),
-    c(1, 0.94),
-    size = 15
-  )
+train_df <- df %>%
+  filter(date <= as.Date("2018-02-01")) %>%
+  filter(date >= as.Date("2018-02-01") %m-% months(60)) %>%
+  filter(source=="Platform / tradingeconomics.com")
+
+p1 <- train_df %>%
+  tail(12*4) %>%
+  ggplot() +
+  geom_line(aes(x = date, y = value)) +
+  theme_minimal() +
+  labs(x = "", y = "") +
+  scale_x_date(limits = c(as.Date("2018-02-01") %m-% months(12*4), as.Date("2018-05-01"))) +
+  scale_y_continuous(limits = c(2700, 5000))
+ggsave(p1, file = "output/figures/opec-iraq-with-chart.png", height = 4, width = 8)
+
+fcast <- forecast(auto.arima(train_df$value), h = 3) %>%
+  as.data.frame() %>%
+  mutate(date = seq(as.Date("2018-03-01"), length.out = 3, by = "month"))
+
+p1 +
+  geom_line(data = fcast, aes(x = date, y = `Point Forecast`), color = "blue") +
+  geom_ribbon(data = fcast, aes(x = date, ymin = `Lo 95`, ymax = `Hi 95`), 
+              fill = "blue", alpha = .2) 
+ggsave(file = "output/figures/opec-iraq-with-forecast.png", height = 4, width = 8)
+
+# Get cutpoint probabilities
+mu  <- tail(fcast, 1)$`Point Forecast`
+u95 <- tail(fcast, 1)$`Hi 95`
+se  <- abs(mu - u95)  / 1.96
+
+cprob <- c(0, pnorm(cutpoints, mean = mu, sd = se), 1)
+probs <- diff(cprob)
+format(probs, digits = 2)

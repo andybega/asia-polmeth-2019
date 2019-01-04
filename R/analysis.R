@@ -8,6 +8,7 @@ library("rstan")
 library("rstanarm")
 library("forcats")
 library("broom")
+library("Hmisc")
 
 dropbox_path <- "~/Dropbox/Work/asia-polmeth-2019"
 in_dir  <- file.path(dropbox_path, "input-data")
@@ -65,9 +66,20 @@ common_period <- all_fcasts %>%
 
 nrow(common_period)
 
+# Unique IFPs
+length(unique(common_period$ifp_id))
+
+# IFPs with machine forecasts
+length(unique(common_period[common_period$Forecaster=="Machine", ]$ifp_id))
+
+# Unique forecasters
+length(unique(common_period$user_id))
+
+# N. forecasts by user group
 common_period %>%
-  group_by(Forecaster) %>%
-  summarize(n = n())
+  dplyr::group_by(Forecaster) %>%
+  dplyr::summarize(n_forecasts = n(),
+                   n_users = length(unique(user_id)))
 
 by_ifp <- common_period %>%
   group_by(ifp_id) %>%
@@ -251,8 +263,30 @@ arima_qs <- common_period %>%
   mutate(Data_source = case_when(
     data_source=="acled" & num_options==2 ~ "ACLED 2op",
     data_source=="acled" & num_options==5 ~ "ACLED 5op",
-    TRUE ~ data_source
+    data_source=="fao-fpi" ~ "FAO global food prices",
+    data_source=="oecd" ~ "OECD interest rates",
+    data_source=="eia" ~ "EIA oil prices",
+    data_source=="privacyrights" ~ "Privacyrights hacking",
+    data_source=="fred" ~ "FRED exchange rates",
+    data_source=="opec" ~ "OPEC oil production",
+    data_source=="imf" ~ "IMF inflation",
+    data_source=="nigeria-security" ~ "Nigeria Boko Haram violence",
+    TRUE ~ Hmisc::capitalize(data_source)
   ))
+
+# overall data source difficulty
+arima_qs %>%
+  dplyr::group_by(Data_source) %>%
+  dplyr::summarize(avg_Brier = mean(brier, na.rm = TRUE)) %>%
+  arrange(avg_Brier)
+
+
+# Add # of questions to each Data source label
+arima_qs <- arima_qs %>%
+  group_by(Data_source) %>%
+  mutate(by_Data_source_n_ifps = length(unique(ifp_id))) %>%
+  ungroup() %>%
+  mutate(Data_source = paste0(Data_source, " (", by_Data_source_n_ifps, ")"))
 
 
 arima_qs %>%
@@ -293,23 +327,45 @@ mdl3_coefs <- tidy(mdl3) %>%
          `Data source` = gsub("Data_source", "", `Data source`)) %>%
   mutate(`Data source` = factor(`Data source`))
 # Reorder by median estimate; makes plot easier to read
-mdl3_coefs$`Data source` = fct_reorder(mdl3_coefs$`Data source`, mdl3_coefs$estimate)
+mdl3_coefs$`Data source` = fct_reorder(mdl3_coefs$`Data source`, mdl3_coefs$estimate,
+                                       .fun = median)
+
+temp1 <- expression(paste("Baseline (", beta, ")"))
+temp2 <- expression(paste("Relative difference (", beta, "')"))
 
 mdl3_coefs %>%
-  mutate(facet = ifelse(Forecaster=="Machine (reference)", "Baseline", "Relative difference")) %>%
+  mutate(facet = ifelse(Forecaster=="Machine (reference)", 1, 2)) %>%
+  mutate(facet = factor(facet, labels = c(temp1, temp2))) %>%
   ggplot(., aes(x = `Data source`, color = Forecaster)) +
   geom_pointrange(aes(y = estimate, ymin = estimate - 1.96*std.error, ymax = estimate + 1.96*std.error),
                   position = position_dodge(width = 0.2), alpha = .8) +
-  facet_wrap(~ facet, scales = "free_x") +
+  facet_wrap(~ facet, scales = "free_x", labeller = "label_parsed") +
   coord_flip() +
-  geom_hline(data = data.frame(facet = "Relative difference", y = 0), 
+  geom_hline(data = data.frame(facet = factor(1, label = temp2), y = 0), 
              aes(yintercept = 0), linetype = 3) +
   scale_x_discrete(limits = rev(levels(mdl3_coefs$`Data source`))) +
-  theme_minimal() +
-  labs(y = "Coefficient estimate", x = "Data source") +
+  theme_ipsum_rc() +
+  labs(y = "Coefficient estimate", x = "Data source / question group (# of questions in group)") +
   theme(legend.position = "top") +
   scale_color_discrete("Forecaster:")
-ggsave("output/figures/model-machine-by-data-source.png", height = 7, width = 7)
+ggsave("output/figures/model-machine-by-data-source.png", height = 6, width = 8)
+
+mdl3_coefs %>%
+  mutate(facet = ifelse(Forecaster=="Machine (reference)", 1, 2)) %>%
+  mutate(facet = factor(facet, labels = c(temp1, temp2))) %>%
+  ggplot(., aes(x = `Data source`, color = Forecaster)) +
+  geom_pointrange(aes(y = estimate, ymin = estimate - 1.96*std.error, ymax = estimate + 1.96*std.error),
+                  position = position_dodge(width = 0.2), alpha = 0) +
+  facet_wrap(~ facet, scales = "free_x", labeller = "label_parsed") +
+  coord_flip() +
+  geom_hline(data = data.frame(facet = factor(1, label = temp2), y = 0), 
+             aes(yintercept = 0), linetype = 3) +
+  scale_x_discrete(limits = rev(levels(mdl3_coefs$`Data source`))) +
+  theme_ipsum_rc() +
+  labs(y = "Coefficient estimate", x = "Data source / question group (# of questions in group)") +
+  theme(legend.position = "top") +
+  scale_color_discrete("Forecaster:")
+ggsave("output/figures/model-machine-by-data-source-buildup.png", height = 6, width = 8)
 
 mdl3_coefs %>%
   mutate(facet = ifelse(Forecaster=="Machine (reference)", "Baseline", "Relative difference")) %>%

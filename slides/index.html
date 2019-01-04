@@ -4,7 +4,6 @@
     <title>Assessing Amazon Turker and automated machine forecasts in the Hybrid Forecasting Competition</title>
     <meta charset="utf-8">
     <meta name="author" content="Predictive Heuristics Andreas Beger and Michael D. Ward" />
-    <meta name="date" content="2018-12-13" />
     <link href="index_files/remark-css-0.0.1/default-fonts.css" rel="stylesheet" />
     <link href="index_files/remark-css-0.0.1/default.css" rel="stylesheet" />
     <link href="index_files/font-awesome-5.3.1/css/fontawesome-all.min.css" rel="stylesheet" />
@@ -16,7 +15,7 @@ class: center, middle, inverse, title-slide
 
 # Assessing Amazon Turker and automated machine forecasts in the Hybrid Forecasting Competition
 ### Predictive Heuristics </br>Andreas Beger and Michael D. Ward
-### 13 Dec 2018
+### 4 January 2019 </br>Asian POLMETH 2019, Kyoto, Japan
 
 ---
 
@@ -25,13 +24,11 @@ class: center, middle, inverse, title-slide
 
 &lt;!-- https://apreshill.github.io/data-vis-labs-2018/slides/06-slides_xaringan.html#13 --&gt;
 
-class: center
-
-# Preview
+class: center, middle
 
 .left.large[I'm going to show results of an exploratory analysis of the relative accuracy of volunteer, Amazon Mechanical Turker, and automated machine forecasts for a broad set of questions (IFPs)&lt;sup&gt;1&lt;/sup&gt; in the HFC&lt;sup&gt;2&lt;/sup&gt; during the first trial period (RCT-A&lt;sup&gt;3&lt;/sup&gt;) that took place this year.]
 
-.left.footnote[&lt;sup&gt;1&lt;/sup&gt; Individual Forecasting Problem...I may not be able to keep myself from using HFC jargon. &lt;/br&gt;
+.left.footnote[&lt;sup&gt;1&lt;/sup&gt; Individual Forecasting Problem&lt;/br&gt;
 &lt;sup&gt;2 &lt;/sup&gt; Hybrid Forecasting Competition &lt;/br&gt;
 &lt;sup&gt;3 &lt;/sup&gt; Randomized controlled trial A]
 
@@ -54,14 +51,19 @@ class: center, middle, inverse
 .pull-right[![](img/sage-logo.png)]
 
 ---
+class: middle 
 
 # Project goal
 
+.middle[
 &gt;The HFC program is developing and testing hybrid geopolitical forecasting systems. These systems **integrate human and machine forecasting components** to create maximally accurate, flexible, and scalable forecasting capabilities.
+]
 
 .right.small[From https://www.hybridforecasting.com]
 
 The idea is to overcome some of the respective weaknesses of human and machine-generated forecasts by combining them in some to be determined fashion.
+
+???
 
 Human-generated forecasts are flexible, but subject to cognitive biases and scalability issues.
 
@@ -104,23 +106,58 @@ Ordered Brier score:
 ---
 class: center, middle, inverse
 
-# The Hybrid part:
+# The hybrid part:
 
-# Some users could see time series charts and machine forecasts for some IFPs
+# Some users could see time series charts and/or machine forecasts for some IFPs
 
 
 ---
 
 # How this works
 
-- An automated system is collection and updating data from several data sources
-- An automated system identifies if data for a particular question is available
+- An automated system is collecting and updating data from several data sources, and matching them up, if possible, to questions
 
-If so:
+--
+
+If data for a particular question is available:
 
 - Chart the data
 - An automated system generates a machine forecast
 
+
+---
+class: middle
+
+### How much crude oil will Iraq produce in May 2018?
+
+.center[
+![:scale 80%](img/opec-iraq-with-chart.png)
+]
+
+- Less than 4,280
+- Between 4,280 and 4,384, inclusive
+- More than 4,384 but less than 4,473
+- Between 4,473 and 4,576, inclusive
+- More than 4,576
+
+---
+class: middle
+
+### How much crude oil will Iraq produce in May 2018?
+
+.center[
+![:scale 80%](img/opec-iraq-with-forecast.png)
+]
+
+- Less than 4,280 *(38%)*
+- Between 4,280 and 4,384, inclusive *(15%)*
+- More than 4,384 but less than 4,473 *(13%)*
+- Between 4,473 and 4,576, inclusive *(13%)*
+- More than 4,576 *(21%)*
+
+???
+
+The model is ARIMA(0, 1, 1)
 
 ---
 
@@ -140,6 +177,26 @@ Most of the complexity is related to automating the question/task parsing and ha
 
 .footnote[&lt;sup&gt;1&lt;/sup&gt; [Hyndman &amp; Khandakar 2008](http://www.jstatsoft.org/article/view/v027i03); R [forecast](https://cran.r-project.org/package=forecast) package]
 
+???
+
+Examples of parsing that needs to be done:
+
+- how far ahead to forecast, which requires parsing the data and question time periods
+- whether the data are count and should be constrained
+- partial data handling
+- data aggregation for fixed period questions
+
+---
+
+# Questions that were of primary concern to us
+
+--
+
+How well are the machine forecasts doing?
+
+--
+
+Are there particular question groups where performance is good or lacking? Basically, where do we need to focus improvements?
 
 ---
 class: middle, center, inverse
@@ -150,65 +207,138 @@ class: middle, center, inverse
 
 # Data
 
-- RCT-A, the first trial period, lasted from 7 March to 7 September 2018
-- Use subset of forecasts from 2 May to 1 August 2018
+RCT-A, the first trial period, lasted from 7 March to 7 September 2018
 
-N fcasts, n IFPs
+- Use subset of forecasts from 2 May (turkers enter) to 1 August 2018 (change in tracking)
 
+~49,000 forecasts
+
+156 IFPs; 46 with machine forecasts
+
+971 unique users
+
+Forecasters: 
+
+- Volunteers who joined the platform 
+- Amazon Mechanical Turkers
+- Machine (basil-ts)
 
 ---
 
 # Summary of some findings in the paper
 
+--
+
 Volunteers are better forecasts than Amazon Turkers
 
 Machines are somewhere in the middle
 
+--
+
 Human forecasters who saw the machine forecasts did poorly; volunteer forecasts who saw only charts had overall the best performance
 
+--
+
 It's not clear why though, e.g.:
+
+--
+
 - they outperformed on questions that did not have data (charts and model)
+
+--
+
 - they outperformed volunteer forecasters who saw the machine forecasts even when the machine forecasts had good accuracy
+
+--
 
 Relative performance: where did the machine forecasts do better than human forecasters?
 
 ---
 
-# Model overview
+# Relative forecaster performance
+
+--
 
 Group questions by data source, N=14 groups
 
-Compare average Brier scores of volunteer, turker, and machine forecasts (reference category)
+--
+
+Linear model to compare average Brier scores of volunteer, turker, and machine forecasts (reference category)
 
 `$$\textrm{Brier}_{ij} = \beta_{i}\textrm{DataSource}_i + \beta'_{ij}(\textrm{DataSource}_i\times\textrm{Forecaster}_j)$$`
 
+--
+
 `\(\beta_i\)` = average Brier score for machine forecasts for question group `\(i\)`
+
+--
 
 `\(\beta'_{ij}\)` = average Brier score *relative to machine forecasts* for forecaster group `\(j\)` in question group `\(i\)`
 
+--
+
 - Negative values `\(\rightarrow\)` human forecasters did better
+
+--
+
 - Positive values `\(\rightarrow\)` machine forecasts did better
 
 ---
 class: center, middle
 
-![:scale 80%](img/model-machine-by-data-source.png)
+![](img/model-machine-by-data-source-buildup.png)
 
+???
+
+- explain the two panels
+- x-axis left is average machine forecast performance, right is difference from left; both are Brier scores
+- y-axis are question groups, number is number of questions
+- sorted so that at top are better human, at bottom are better machine
+
+---
+class: center, middle
+
+![](img/model-machine-by-data-source.png)
+
+???
+
+- overall easiest, which can't see directly were oil prices, stocks
+- overall hardest were ACLED, OECD interest rates, and Boko Haram
+- humans generally tended to do better on questions with monthly period (food prices, oil production)
+- machines more clearly did better on questions that require data aggregation (ACLED, Nigeria, hacking); earthquakes aggregates are readily available
+- ACLED 2op versus 5op: maybe partly 0's, partly truncation issue
 
 ---
 
 # ACLED 5-option
+
+Overall hard questions; machine outperformed human forecasts
+
+&gt; How many battle deaths will ACLED record in Central African Republic in August 2018?
+
+![](img/chart-2117.png)
 
 
 ---
 
 # OECD interest rates
 
+Overall hard questions; machine has middling performance
+
+&gt; What will be the long-term interest rate for Hungary (HUN) in July 2018?
+
+![](img/chart-1793.png)
+
 
 ---
 
 # ACLED binary question
 
+Relatively easy questions, but machines underperformed a lot
+
+&gt; Will ACLED record any riot/protest events in Gambia in July 2018?
+
+![](img/chart-1136.png)
 
 ---
 
@@ -216,10 +346,32 @@ class: center, middle
 
 Machine forecasts did well on count questions that require data aggregation 
 
+- ACLED
+- Privacyrights hacking
+- Nigeria security tracker (Boko Haram)
+
+--
+
 Some of the overall hardest questions, and where to some extent human forecasters did better, are economic/financial monthly series 
 
 - OECD interest rates
 - FAO food price indices
+- exchange rates
+- oil production
+
+--
+
+---
+
+# Issues we did not address
+
+--
+
+What about selection issues; are volunteer forecasters able to self-select into questions they will do well on?
+
+--
+
+Do the chart volunteers do better on questions requiring data aggregation; generally there are some inconsistencies on why/how the chart volunteers did so well.
 
 
 ---
@@ -227,9 +379,7 @@ class: center, middle, inverse
 
 # Thank you!
 
-Register to forecast at: 
-
-Internal platform: 
+Register to forecast at https://sage-platform.isi.edu/
 
 .left[
 <i class="fas  fa-envelope "></i>: [adbeger@gmail.com](mailto:adbeger@gmail.com)
