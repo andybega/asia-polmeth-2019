@@ -92,8 +92,8 @@ by_ifp
 
 # Overall condition table
 brier_by_forecaster <- common_period %>%
-  group_by(Forecaster) %>%
-  summarize(avg_Brier = mean(brier), n = n()) %>%
+  dplyr::group_by(Forecaster) %>%
+  dplyr::summarize(avg_Brier = mean(brier), n = n()) %>%
   write_csv(., "output/tables/brier-by-forecaster.csv")
 brier_by_forecaster %>%
   knitr::kable(digits = 3)

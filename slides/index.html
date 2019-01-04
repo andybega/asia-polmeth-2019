@@ -15,7 +15,7 @@ class: center, middle, inverse, title-slide
 
 # Assessing Amazon Turker and automated machine forecasts in the Hybrid Forecasting Competition
 ### Predictive Heuristics </br>Andreas Beger and Michael D. Ward
-### 4 January 2019 </br>Asian POLMETH 2019, Kyoto, Japan
+### 5 January 2019 </br>Asian POLMETH 2019, Kyoto, Japan
 
 ---
 
@@ -117,8 +117,6 @@ class: center, middle, inverse
 
 - An automated system is collecting and updating data from several data sources, and matching them up, if possible, to questions
 
---
-
 If data for a particular question is available:
 
 - Chart the data
@@ -190,11 +188,7 @@ Examples of parsing that needs to be done:
 
 # Questions that were of primary concern to us
 
---
-
 How well are the machine forecasts doing?
-
---
 
 Are there particular question groups where performance is good or lacking? Basically, where do we need to focus improvements?
 
@@ -255,32 +249,31 @@ Relative performance: where did the machine forecasts do better than human forec
 
 ---
 
+---
+
+# Performance by forecaster group
+
+|Forecaster | avg Brier|     N|
+|:----------|---------:|-----:|
+|Machine    |     0.402|  1975|
+|Turker     |     0.433| 39140|
+|Volunteer  |     0.322|  7816|
+
+---
+
 # Relative forecaster performance
 
---
-
 Group questions by data source, N=14 groups
-
---
 
 Linear model to compare average Brier scores of volunteer, turker, and machine forecasts (reference category)
 
 `$$\textrm{Brier}_{ij} = \beta_{i}\textrm{DataSource}_i + \beta'_{ij}(\textrm{DataSource}_i\times\textrm{Forecaster}_j)$$`
 
---
-
 `\(\beta_i\)` = average Brier score for machine forecasts for question group `\(i\)`
-
---
 
 `\(\beta'_{ij}\)` = average Brier score *relative to machine forecasts* for forecaster group `\(j\)` in question group `\(i\)`
 
---
-
 - Negative values `\(\rightarrow\)` human forecasters did better
-
---
-
 - Positive values `\(\rightarrow\)` machine forecasts did better
 
 ---
