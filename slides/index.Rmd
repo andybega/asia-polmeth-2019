@@ -353,8 +353,6 @@ Some of the overall hardest questions, and where to some extent human forecaster
 - exchange rates
 - oil production
 
---
-
 ---
 
 # Issues we did not address
