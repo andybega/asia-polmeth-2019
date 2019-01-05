@@ -1,7 +1,7 @@
 ---
 title: Assessing Amazon Turker and automated machine forecasts in the Hybrid Forecasting Competition
 author: "Predictive Heuristics </br>Andreas Beger and Michael D. Ward"
-date: "`r format(Sys.Date(), '%e %B %Y')` </br>Asia POLMETH 2019, Kyoto, Japan"
+date: "`r format(Sys.Date(), '%e %B %Y')` </br>Asian POLMETH 2019, Kyoto, Japan"
 output: 
   xaringan::moon_reader:
     css: ["default-fonts", "default", "custom_theme.css"]
