@@ -252,8 +252,8 @@ mdl_summary_stats
 # Based on this, split out ACLED binary questions
 View(common_period %>%
        filter(IFP_Group=="Chart and model") %>%
-       group_by(data_source, num_options, Forecaster) %>%
-       summarize(n_ifps = length(unique(ifp_id)),
+       dplyr::group_by(data_source, num_options, Forecaster) %>%
+       dplyr::summarize(n_ifps = length(unique(ifp_id)),
                  n_fcasts = n(),
                  avg_Brier = mean(brier), 
                  sd_Brier = sd(brier)))
@@ -291,19 +291,19 @@ arima_qs <- arima_qs %>%
 
 arima_qs %>%
   group_by(num_options, Forecaster) %>%
-  summarize(n_ifps = length(unique(ifp_id)),
+  dplyr::summarize(n_ifps = length(unique(ifp_id)),
             n_fcasts = n(),
             avg_Brier = mean(brier), 
             sd_Brier = sd(brier)) 
 
 arima_qs %>%
   group_by(Data_source, num_options) %>%
-  summarize(n_ifps = length(unique(ifp_id)),
+  dplyr::summarize(n_ifps = length(unique(ifp_id)),
             avg_Brier = mean(brier))
 
 brier_arima_qs_only_by_data_source_forecaster <- arima_qs %>%
   group_by(Data_source, Forecaster) %>%
-  summarize(n_ifps = length(unique(ifp_id)),
+  dplyr::summarize(n_ifps = length(unique(ifp_id)),
             n_fcasts = n(),
             avg_Brier = mean(brier), 
             sd_Brier = sd(brier)) %>%
@@ -396,7 +396,7 @@ cond_b_volunteers_n_vs_brier <- common_period %>%
   group_by(user_id) %>%
   mutate(n_fcasts = n(), IFP_had_chart = !IFP_Group=="No TS data") %>%
   group_by(user_id, IFP_had_chart) %>%
-  summarize(n_fcasts = unique(n_fcasts), avg_Brier = mean(brier))
+  dplyr::summarize(n_fcasts = unique(n_fcasts), avg_Brier = mean(brier))
 
 ggplot(cond_b_volunteers_n_vs_brier, aes(x = n_fcasts, y = avg_Brier, color = IFP_had_chart)) +
   geom_point() + 
@@ -417,7 +417,7 @@ common_period %>%
   mutate(n_fcasts = n()) %>%
   filter(n_fcasts < 50) %>%
   group_by(Forecaster, Condition) %>%
-  summarize(users = length(unique(user_id)),
+  dplyr::summarize(users = length(unique(user_id)),
             avg_Brier = mean(brier))
 
 # User 1354 was B volunteer with the most forecasts, did he she get better over time?
@@ -439,7 +439,7 @@ ggplot(u911, aes(x = date, y = brier, color = IFP_Group)) +
 # look at stats when you take out superheavy users
 fcasts_by_user <- common_period %>%
   group_by(user_id) %>%
-  summarize(n_fcasts = n()) %>%
+  dplyr::summarize(n_fcasts = n()) %>%
   ungroup()
 
 # Do small time users who enter the competition later do as well as those who
@@ -466,7 +466,7 @@ f1892 <- filter(common_period, ifp_id==1892) %>%
 summary(lm(brier ~ Group, data = f1892))
 tbl1892 <- f1892 %>%
   group_by(Forecaster, condition) %>%
-  summarize(avg_Brier = mean(brier), n = n()) %>%
+  dplyr::summarize(avg_Brier = mean(brier), n = n()) %>%
   arrange(avg_Brier)
 tbl1892
 
@@ -478,7 +478,7 @@ f911 <- filter(all_fcasts, ifp_id==911) %>%
 summary(lm(brier ~ Group, data = f911))
 tbl911 <- f911 %>%
   group_by(Forecaster, condition) %>%
-  summarize(avg_Brier = mean(brier), n = n()) %>%
+  dplyr::summarize(avg_Brier = mean(brier), n = n()) %>%
   arrange(avg_Brier)
 tbl911
 
@@ -492,7 +492,7 @@ f1003 <- filter(common_period, ifp_id==1003) %>%
 summary(lm(brier ~ Group, data = f1003))
 tbl1003 <- f1003 %>%
   group_by(Forecaster, condition) %>%
-  summarize(avg_Brier = mean(brier), n = n()) %>%
+  dplyr::summarize(avg_Brier = mean(brier), n = n()) %>%
   arrange(avg_Brier)
 tbl1003
 
@@ -501,7 +501,7 @@ tbl1003
 good_machine <- common_period %>%
   # Get average for each group on each IFP
   group_by(ifp_id, Forecaster, Condition) %>%
-  summarize(avg_Brier = mean(brier), n_fcasts = n()) %>%
+  dplyr::summarize(avg_Brier = mean(brier), n_fcasts = n()) %>%
   group_by(ifp_id) %>%
   # Don't do a weighted avg for Brier. We want an estimate of the performance
   # of a group on an IFP, i.e. group average and the average of that
@@ -524,7 +524,7 @@ fcasts_good_machine <- common_period %>%
   mutate(N_users = length(unique(user_id))) %>%
   # Get average for each group on each IFP
   group_by(ifp_id, Forecaster, Condition) %>%
-  summarize(avg_Brier = mean(brier), N_fcasts = n(), N_users = unique(N_users)) %>%
+  dplyr::summarize(avg_Brier = mean(brier), N_fcasts = n(), N_users = unique(N_users)) %>%
   group_by(ifp_id) %>%
   # Don't do a weighted avg for Brier. We want an estimate of the performance
   # of a group on an IFP, i.e. group average and the average of that
@@ -535,7 +535,7 @@ fcasts_good_machine <- common_period %>%
 
 fcasts_good_machine %>%
   group_by(Forecaster, Condition) %>% 
-  summarize(avg_rel_Brier = mean(rel_performance),
+  dplyr::summarize(avg_rel_Brier = mean(rel_performance),
             N_users = unique(N_users), N_fcasts = sum(N_fcasts)) %>%
   knitr::kable(digits = 2)
 
@@ -556,7 +556,7 @@ ggplot(fcasts_good_machine, aes(x = interaction(Forecaster, Condition), y = brie
 # Look at groupings by data source
 by_source <- common_period %>%
   group_by(data_source, Forecaster, condition) %>%
-  summarize(avg_Brier = mean(brier), n = n())
+  dplyr::summarize(avg_Brier = mean(brier), n = n())
 by_source
 with(by_source[by_source$Forecaster=="Volunteer" & by_source$condition=="a", ],
      plot(n, avg_Brier))
@@ -575,16 +575,16 @@ with(by_source, plot(n, avg_Brier))
 user_fcasts %>%
   filter(condition=="b") %>%
   group_by(user_id) %>%
-  summarize(n = n()) %>% pull(n) -> foo
+  dplyr::summarize(n = n()) %>% pull(n) -> foo
 
 # a couple of heavyweights are pulling B
-user_fcasts %>% group_by(user_id, condition) %>% summarize(brier = mean(brier), n = n()) -> foo
+user_fcasts %>% group_by(user_id, condition) %>% dplyr::summarize(brier = mean(brier), n = n()) -> foo
 filter(foo, n > 200) %>% arrange(brier)
 
 # do people in B forecast more?
-user_fcasts %>% group_by(user_id, condition, turker) %>% summarize(brier = mean(brier), n = n()) -> foo
+user_fcasts %>% group_by(user_id, condition, turker) %>% dplyr::summarize(brier = mean(brier), n = n()) -> foo
 foo %>% group_by(turker, condition) %>%
-  summarize(users = n(),
+  dplyr::summarize(users = n(),
             med_fcasts = median(n),
             mean_fcasts = mean(n))
 
@@ -596,19 +596,19 @@ user_fcasts %>%
 foo %>%
   filter(!turker) %>%
   group_by(condition, has_historic_data) %>%
-  summarize(mean(brier))
+  dplyr::summarize(mean(brier))
 # questions with historic data don't seem to be harder
 foo %>%
   filter(condition=="b") -> foo
 foo %>%
   group_by(has_historic_data) %>%
-  summarize(mean(brier))
+  dplyr::summarize(mean(brier))
 foo %>%
   group_by(n_fcasts_by_user==1, has_historic_data) %>%
-  summarize(mean(brier))
+  dplyr::summarize(mean(brier))
 foo %>%
   group_by(n_fcasts_by_user < 8, has_historic_data) %>%
-  summarize(mean(brier))
+  dplyr::summarize(mean(brier))
 
 # Look at it by how well the model did; when the model did well, did C do well, too?
 # Look at it when you take out the heavy users. Why would or would not short-term
